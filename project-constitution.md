@@ -8,23 +8,57 @@
 
 ---
 
+## Table of contents
+
+1. [Purpose](#1-purpose)  
+2. [Product Identity](#2-product-identity)  
+   - [Product Name](#21-product-name)  
+   - [Product Definition](#22-product-definition)  
+   - [Core Product Idea](#23-core-product-idea)  
+3. [Product Principles](#3-product-principles)  
+4. [Project Scope](#4-project-scope)  
+   - [MVP](#41-mvp)  
+   - [Post-MVP Features](#5-post-mvp-features)  
+   - [MVP Freeze Rule](#6-mvp-freeze-rule)  
+5. [System & Authentication Architecture](#7-system--authentication-architecture)  
+   - [System Architecture](#7-system-architecture)  
+   - [Authentication Architecture](#8-authentication-architecture)  
+6. [User Roles](#9-user-roles)  
+7. [API Standards & Security](#10-api-standards--api-security-rules)  
+   - [API Standards](#10-api-standards)  
+   - [API Security Rules](#11-api-security-rules)  
+8. [Database Rules & Design](#12-database-rules--database-design-principles)  
+   - [Database Rules](#12-database-rules)  
+   - [Database Design Principle](#13-database-design-principle)  
+   - [Database Change Rule](#14-database-change-rule)  
+9. [Core Entities & Evidence](#15-core-database-entities--evidence-rules)  
+   - [Core Database Entities](#15-core-database-entities)  
+   - [Evidence Rules](#16-evidence-rules)  
+10. [AI Usage & Failure Handling](#17-ai-rules--ai-failure-rule)  
+11. [External Integrations](#19-external-integration-rules)  
+12. [Repository, Branching, Commits & PRs](#20-git-repository-rules--branch-naming--commit--pr-rules)  
+13. [Development Process, Boards & Roles](#30-project-board--task-ownership--team-structure)  
+14. [Testing, Security, Privacy, and History](#41-testing-philosophy--security-and-privacy)  
+15. [Decision Making & Changing the Constitution](#50-decision-making-process--changing-the-constitution)  
+16. [Documentation & Final Rules](#52-documentation-hierarchy--final-team-rule)  
+
+---
+
 ## 1. Purpose
 
 This document defines the rules, principles, technical standards, development workflow, and decision-making process that all SkillBridge team members must follow.
 
-The purpose is to ensure that five developers work as **one engineering team** rather than as five independent developers.
-
-This document is the team's working contract.
+The purpose is to ensure five developers work as one engineering team rather than as five independent developers. This document is the team's working contract.
 
 ---
 
-# 2. Product Identity
+## 2. Product Identity
 
-## 2.1 Product Name
+### 2.1 Product Name
 
 **SkillBridge**
 
-## 2.2 Product Definition
+### 2.2 Product Definition
 
 SkillBridge is an evidence-based career intelligence and talent matching platform connecting students/candidates and employers through:
 
@@ -39,257 +73,168 @@ SkillBridge is an evidence-based career intelligence and talent matching platfor
 - Employer candidate discovery
 - Hiring workflow
 
-## 2.3 Core Product Idea
+### 2.3 Core Product Idea
 
-```text
-Build Skills
-     ↓
-Prove Skills
-     ↓
-Present Skills
-     ↓
-Find Relevant Jobs
-     ↓
-Apply
-     ↓
-Interview
-     ↓
-Improve
-     ↓
+Build Skills  
+↓  
+Prove Skills  
+↓  
+Present Skills  
+↓  
+Find Relevant Jobs  
+↓  
+Apply  
+↓  
+Interview  
+↓  
+Improve  
+↓  
 Get Hired
 
 The resume is a presentation/output layer, not the master source of candidate information.
 
-3. Product Principles
+---
 
-SkillBridge follows these principles:
+## 3. Product Principles
 
 3.1 Evidence Before Claims
-
-The system should distinguish between:
-
-Self-reported information
-Supporting evidence
-Verified evidence
-Unverified claims
-
-The system must never fabricate evidence.
+- Distinguish between self-reported information, supporting evidence, verified evidence, and unverified claims.
+- The system must never fabricate evidence.
 
 3.2 Truthful Career Representation
+- The system may improve presentation but must not invent:
+  - Skills, Experience, Projects, Achievements, Metrics, Responsibilities, Certifications
 
-SkillBridge may improve presentation of candidate information but must not invent:
-
-Skills
-Experience
-Projects
-Achievements
-Metrics
-Responsibilities
-Certifications
 3.3 Explainability
-
-Important intelligent outputs should provide understandable reasons.
-
-For example, job matching should explain:
-
-Strong Match
-Partial Match
-Missing Skill
-Supporting Evidence
-
-rather than presenting only a mysterious score.
+- Important intelligent outputs should provide understandable reasons (e.g., "Strong Match", "Partial Match", "Missing Skill", "Supporting Evidence").
 
 3.4 User Control
-
-Candidates retain control over their professional information and visibility.
-
-Private information must never become publicly visible simply because it exists in the database.
+- Candidates retain control over professional information and visibility.
+- Private information must never become public simply because it exists in the database.
 
 3.5 Security by Default
+- Authentication, authorization, validation, and ownership checks belong to the backend.
 
-Authentication, authorization, validation, and ownership checks belong to the backend.
+---
 
-4. Project Scope
-4.1 MVP
+## 4. Project Scope
+
+### 4.1 MVP
 
 The MVP contains:
 
 Authentication
-Firebase Authentication
-User initialization
-One role per account
-Student
-Employer
-Admin
-Student
-Professional profile
-Education
-Experience
-Projects
-Skills
-Certifications
-Achievements
-External account connections
-GitHub integration
-Evidence management
-Resume management
-Resume versions
-Resume Truth Checker
-Job analysis
-Job matching
-Apply with SkillBridge
-Application tracking
-Employer
-Company profile
-Company membership
-Job creation
-Job publishing
-Job management
-Candidate search
-Candidate profile
-Application review
-Shortlisting
-Hiring pipeline
-Application notes
-Interview management
-Platform
-Role-based authorization
-Validation
-Error handling
-Testing
-Deployment
-Documentation
-5. Post-MVP Features
+- Firebase Authentication
+- User initialization
+- One role per account: Student, Employer, Admin
 
-The following are not part of the initial MVP unless explicitly added through the change process:
+Student features:
+- Professional profile, education, experience, projects, skills, certifications, achievements
+- External account connections (GitHub integration)
+- Evidence management
+- Resume management and versions
+- Resume Truth Checker
+- Job analysis & matching
+- Apply with SkillBridge, application tracking
 
-College dashboards
-College analytics
-Rankings
-Hackathons
-Career events
-Scholarships
-Internship marketplace
-Sponsored skill programs
-Advanced interview simulation
-Advanced project generation
-Advanced recommendation systems
-Advanced analytics
+Employer features:
+- Company profile & membership
+- Job creation, publishing & management
+- Candidate search & profile viewing
+- Application review, shortlisting, hiring pipeline, notes
+- Interview management
+
+Platform features:
+- Role-based authorization
+- Validation, error handling, testing, deployment, documentation
+
+### 5. Post-MVP Features
+
+Not part of the initial MVP unless explicitly added via the change process:
+- College dashboards & analytics
+- Rankings, hackathons, career events, scholarships
+- Internship marketplace, sponsored skill programs
+- Advanced interview simulation, project generation, recommendation systems, analytics
 
 These belong to the future roadmap.
 
-6. MVP Freeze Rule
+### 6. MVP Freeze Rule
 
-Once the team declares the MVP frozen:
+When the MVP is frozen:
+1. New idea → create GitHub Issue
+2. Evaluate → potentially add to future roadmap
 
-New idea
-   ↓
-GitHub Issue
-   ↓
-Evaluate
-   ↓
-Future roadmap
+A new feature must not enter the active sprint simply because someone has an idea—this prevents scope creep.
 
-A new feature must not enter the active sprint simply because someone has an idea.
+---
 
-This prevents scope creep.
+## 7. System & Authentication Architecture
 
-7. System Architecture
+### 7.1 System Architecture
 
-The agreed high-level architecture is:
+High-level architecture:
 
-                         USERS
-                           │
-                           ▼
-                    Next.js / React
-                           │
-                           ▼
-                    Spring Boot API
-                           │
-             ┌─────────────┼─────────────┐
-             ▼             ▼             ▼
-       PostgreSQL        AI Layer      External APIs
-             │             │             │
-             │             │             └── GitHub
-             │             │
-             │             └── Ollama / AI provider
-             │
-             └── pgvector where required
-8. Authentication Architecture
+USERS  
+↓  
+Next.js / React (frontend)  
+↓  
+Spring Boot API (backend)  
+├─ PostgreSQL (with pgvector where required)  
+├─ AI Layer (Ollama / AI provider)  
+└─ External APIs (e.g., GitHub)
 
-Authentication will use:
+### 8. Authentication Architecture
 
-Firebase Authentication
+Authentication flow:
 
-Flow:
+User  
+↓  
+Firebase Authentication  
+↓  
+Firebase ID Token  
+↓  
+Authorization: Bearer <token>  
+↓  
+Spring Boot verifies Firebase Token  
+↓  
+Extract Firebase UID → Find SkillBridge User → Check Role → Authorize Request
 
-User
- ↓
-Firebase Authentication
- ↓
-Firebase ID Token
- ↓
-Authorization: Bearer <token>
- ↓
-Spring Boot
- ↓
-Verify Firebase Token
- ↓
-Extract Firebase UID
- ↓
-Find SkillBridge User
- ↓
-Check Role
- ↓
-Authorize Request
+- Firebase is responsible for identity/authentication.
+- PostgreSQL stores application data.
 
-Firebase is responsible for identity/authentication.
+---
 
-PostgreSQL stores SkillBridge application data.
+## 9. User Roles
 
-9. User Roles
+- Each account has exactly one role: STUDENT, EMPLOYER, or ADMIN.
+- The role must be determined by backend/database state. The frontend must never be trusted to determine permissions.
 
-Each SkillBridge account has exactly one application role.
+---
 
-Allowed roles:
+## 10. API Standards & API Security Rules
 
-STUDENT
-EMPLOYER
-ADMIN
+### 10.1 API Standards
 
-The role must be determined by backend/database state.
+- Style: REST
+- Base path: `/api/v1`
+- Example: `GET /api/v1/profile/me`
 
-The frontend must never be trusted to determine its own permissions.
+Authentication:
+- Protected APIs receive `Authorization: Bearer <Firebase ID Token>`
 
-10. API Standards
-API style
+Response format:
 
-SkillBridge uses:
-
-REST API
-
-Version
-
-All API endpoints start with:
-
-/api/v1
-
-Example:
-
-GET /api/v1/profile/me
-Authentication
-
-Protected APIs receive:
-
-Authorization: Bearer <Firebase ID Token>
-Response format
-Success
+Success:
+```json
 {
   "success": true,
   "data": {},
   "message": "Operation completed successfully"
 }
-Error
+```
+
+Error:
+```json
 {
   "success": false,
   "error": {
@@ -297,1009 +242,290 @@ Error
     "message": "Human-readable message"
   }
 }
+```
+- `error.code` should be stable and suitable for frontend logic.
 
-The error.code should be stable and suitable for frontend logic.
+### 11. API Security Rules
 
-11. API Security Rules
+The backend must not trust these client-supplied values:
+- User ID, Firebase UID, Role, Resource ownership, Company ownership, Evidence verification status
 
-Backend must never trust the following values supplied by the client:
+The backend must derive them from:
+- Authenticated identity + database state + business rules
 
-User ID
-Firebase UID
-Role
-Resource ownership
-Company ownership
-Evidence verification status
+---
 
-The backend derives these from:
+## 12. Database Rules
 
-Authenticated identity
-+
-Database state
-+
-Business rules
-12. Database Rules
+- DB: PostgreSQL
+- Primary keys: UUID
+- Firebase UID: external identity, unique, not the PK
+- Timestamps: TIMESTAMPTZ
+- Important historical business records should use soft deletes/status rather than physical deletion (e.g., jobs with applications, resume versions).
 
-Database:
+## 13. Database Design Principle
 
-PostgreSQL
+- Authoritative candidate data belongs in structured domain tables:
+  - Profile → Education, Experience, Projects, Skills, Certifications, Achievements, Evidence
+- Resumes are generated from structured data. A resume must not become the authoritative source.
 
-Primary keys:
+## 14. Database Change Rule
 
-UUID
+Process for schema changes:
+1. Requirement
+2. Check existing schema
+3. Discuss proposed change
+4. Update database design
+5. Create migration
+6. Test migration
+7. PR → Review → Merge
 
-Firebase UID:
+- Migrations should be version controlled. Recommended tool: Flyway.
 
-External identity
-Unique
-Not the PostgreSQL primary key
+---
 
-Timestamps:
+## 15. Core Database Entities
 
-TIMESTAMPTZ
+Current core model includes (non-exhaustive):
+- users, roles, profiles, educations, experiences, projects, skills, profile_skills, project_skills, certifications, achievements, evidence, external_accounts, github_repositories, project_repositories, resumes, resume_versions, companies, company_memberships, jobs, job_skills, job_questions, applications, application_answers, application_status_history, application_notes, interviews, candidate_preferences
 
-Important historical business records should not be physically deleted unnecessarily.
+The database design document is authoritative for fields and relationships.
 
-Examples:
+---
 
-Jobs with applications
-Applications
-Application history
-Submitted resume versions
+## 16. Evidence Rules
 
-Use status/soft deletion where appropriate.
+- Evidence sources: GitHub, projects, certifications, experience, coding profiles, documents, self-reported info, assessments.
+- Possible evidence states:
+  - SELF_REPORTED, SUPPORTED, VERIFIED, UNVERIFIED, REJECTED
+- Do not mark evidence VERIFIED solely because an AI model believes it is genuine—verification requires a defined mechanism.
 
-13. Database Design Principle
+---
 
-The authoritative candidate data belongs in structured profile/domain tables.
+## 17. AI Rules
 
-Profile
- ├── Education
- ├── Experience
- ├── Projects
- ├── Skills
- ├── Certifications
- ├── Achievements
- └── Evidence
+- AI is assistive, not authoritative.
+- Permitted uses:
+  - Job description analysis, skill extraction, resume analysis, claim analysis, evidence interpretation, semantic matching, interview question generation, feedback
+- Application logic controls:
+  - Authentication, Authorization, Ownership, DB integrity, Resume versioning, Hiring pipeline, Validation, Security
 
-Resumes are generated/presented from this information.
+## 18. AI Failure Rule
 
-Therefore:
+If AI provider is unavailable:
+- Controlled error → user informed → user data remains safe
+- Core CRUD should not depend on AI availability.
 
-A resume must not become the authoritative source for candidate data.
+---
 
-14. Database Change Rule
+## 19. External Integration Rules
 
-No developer should casually change the schema.
+- Implement external integrations only after verifying provider API/access rules.
+- Initial priority: GitHub
+- Do not assume an API exists simply because a website exists.
 
-The process is:
+---
 
-Requirement
-   ↓
-Check existing schema
-   ↓
-Discuss proposed change
-   ↓
-Update database design
-   ↓
-Create migration
-   ↓
-Test migration
-   ↓
-PR
-   ↓
-Review
-   ↓
-Merge
+## 20. Git Repository Rules
 
-Database migrations should be version controlled.
+- Repository: `heyvinay-lab/SkillBridge`
+- Primary branch: `main` — should represent stable, integrated code.
+- Direct pushes to `main` should be disabled for normal development.
 
-Recommended migration tool:
+### Branch naming examples
 
-Flyway
+Features:
+- `feature/student-profile`
+- `feature/github-integration`
+- `feature/evidence-engine`
+- `feature/resume-builder`
+- `feature/job-matching`
 
-15. Core Database Entities
-
-The current core model includes:
-
-users
-roles
-profiles
-educations
-experiences
-projects
-skills
-profile_skills
-project_skills
-certifications
-achievements
-evidence
-external_accounts
-github_repositories
-project_repositories
-resumes
-resume_versions
-companies
-company_memberships
-jobs
-job_skills
-job_questions
-applications
-application_answers
-application_status_history
-application_notes
-interviews
-candidate_preferences
+Bug fixes:
+- `fix/login-error`
+- `fix/github-sync`
+- `fix/application-duplicate`
 
-The database design document is the authority for exact fields and relationships.
+Documentation:
+- `docs/api-specification`
+- `docs/database-design`
 
-16. Evidence Rules
+### Commit rules
 
-Evidence is a core SkillBridge concept.
+- Commits should describe one logical change, use imperative wording:
+  - Good: `Add student profile API`
+  - Avoid: `update`, `final`, `latest`
 
-Evidence can originate from sources such as:
-
-GitHub
-Projects
-Certifications
-Experience
-Coding profiles
-Portfolio
-Assessments
-Documents
-Self-reported information
-
-Possible states include:
-
-SELF_REPORTED
-SUPPORTED
-VERIFIED
-UNVERIFIED
-REJECTED
-
-The system must not mark evidence as VERIFIED simply because an AI model believes it is genuine.
-
-Verification requires a defined verification mechanism.
-
-17. AI Rules
-
-AI is an assistive component, not the authority over business truth.
-
-AI may be used for:
-
-Job description analysis
-Skill extraction
-Resume analysis
-Claim analysis
-Evidence interpretation
-Semantic matching
-Interview question generation
-Interview feedback
-
-Traditional application logic controls:
-
-Authentication
-Authorization
-Ownership
-Database integrity
-Application state
-Resume versioning
-Hiring pipeline
-Validation
-Security
-18. AI Failure Rule
-
-AI failure must not corrupt or destroy user data.
-
-If an AI provider is unavailable:
-
-AI unavailable
-      ↓
-Controlled error
-      ↓
-User data remains safe
-
-Core CRUD functionality should not depend unnecessarily on AI availability.
-
-19. External Integration Rules
-
-External integrations must be implemented only after confirming the provider's current API/access rules.
-
-Initial priority:
-
-GitHub
-
-Potential future integrations require separate validation.
-
-The team must not assume that an API exists merely because a website exists.
-
-20. Git Repository Rules
-
-Repository:
-
-heyvinay-lab/SkillBridge
-
-Primary branch:
-
-main
-
-main should represent stable, integrated code.
-
-Direct pushes to main should be disabled for normal development.
-
-21. Branch Naming
-Features
-feature/student-profile
-feature/github-integration
-feature/evidence-engine
-feature/resume-builder
-feature/job-matching
-Bug fixes
-fix/login-error
-fix/github-sync
-fix/application-duplicate
-Documentation
-docs/api-specification
-docs/database-design
-22. Commit Rules
-
-Commits should describe one logical change.
-
-Good:
-
-Add student profile API
-Implement GitHub repository sync
-Fix duplicate application validation
-Add resume version history
-
-Avoid:
-
-update
-changes
-final
-final2
-latest
-
-Use imperative wording.
-
-23. Pull Request Rules
-
-All meaningful feature work should go through a Pull Request.
+### Pull Request rules
 
 Workflow:
+Issue → Branch → Implementation → Testing → Commit → Push → PR → Review → Approval → Merge
 
-Issue
- ↓
-Branch
- ↓
-Implementation
- ↓
-Testing
- ↓
-Commit
- ↓
-Push
- ↓
-PR
- ↓
-Review
- ↓
-Approval
- ↓
-Merge
-24. Pull Request Requirements
+PR should state:
+- What changed, why, how tested, related issue (example format provided in original document).
 
-A PR should clearly state:
+Code review:
+- At least one other developer should review meaningful PRs; focus on correctness, security, authorization, validation, DB integrity, tests, performance, maintainability.
 
-What changed?
-Why was it changed?
-How was it tested?
-Which issue does it address?
+Sensitive changes (extra review):
+- Firebase auth, DB migrations, personal-data access, file access, GitHub OAuth, external credentials, application permissions.
 
-Example:
+---
 
-## What changed
+## 21. Issue Rules & Definitions
 
-- Added student profile API
-- Added validation
-- Added authorization checks
+- Work should be represented as GitHub Issues and include: Title, Goal, Requirements, Acceptance Criteria, Dependencies, Owner, Priority.
+- Definition of Ready: requirement clear, expected behavior defined, dependencies known, acceptance criteria exist, owner assigned, relevant API/DB design known.
+- Definition of Done:
+  - Requirement implemented, validation & auth checked, tests completed, PR reviewed & merged, integration checked, documentation updated.
 
-## Testing
+---
 
-- Tested create profile
-- Tested update profile
-- Tested unauthorized access
+## 22. Project Board & Task Ownership
 
-## Related Issue
+Project Board columns:
+- BACKLOG → TODO → IN PROGRESS → IN REVIEW → TESTING → DONE
 
-Closes #25
-25. Code Review
+Task ownership:
+- Every active task has one primary owner (responsible for driving to completion, not necessarily doing all work).
 
-At least one other developer should review meaningful PRs before merging.
+---
 
-Reviewers should consider:
-
-Correctness
-Security
-Authorization
-Validation
-Database integrity
-API contract
-Tests
-Performance where relevant
-Maintainability
-Scope
-
-Review comments must focus on the implementation, not the person.
-
-26. Sensitive Changes
-
-Additional review should be used when practical for:
-
-Firebase authentication
-Authorization
-Database migrations
-Personal-data access
-File access
-GitHub OAuth
-External credentials
-Application permissions
-27. Issue Rules
-
-Work should be represented as GitHub Issues.
-
-An issue should contain:
-
-Title
-Goal
-Requirements
-Acceptance Criteria
-Dependencies
-Owner
-Priority
-
-Example:
-
-Title:
-Implement GitHub Repository Sync
-
-Goal:
-Import permitted GitHub repository information.
-
-Acceptance Criteria:
-- OAuth works
-- Repositories can be fetched
-- Data is normalized
-- Existing data is updated safely
-- Errors are handled
-- Tests exist
-28. Definition of Ready
-
-A task can enter active development only when:
-
-Requirement is clear
-Expected behavior is defined
-Dependencies are known
-Acceptance criteria exist
-Owner is assigned
-Relevant API/database design is known
-
-A developer should not start an ambiguous task just because it was assigned.
-
-29. Definition of Done
-
-A task is considered complete only when:
-
-✓ Requirement implemented
-✓ Validation implemented
-✓ Authorization checked
-✓ Tests completed
-✓ API/database contract respected
-✓ PR reviewed
-✓ PR merged
-✓ Integration checked
-✓ Documentation updated where necessary
-30. Project Board
-
-The GitHub Project Board should use:
-
-BACKLOG
-   ↓
-TODO
-   ↓
-IN PROGRESS
-   ↓
-IN REVIEW
-   ↓
-TESTING
-   ↓
-DONE
-
-The board is the team's primary visual progress tracker.
-
-31. Task Ownership
-
-Every active task has one primary owner.
-
-Example:
-
-Student Profile API
-→ Member 2
-
-GitHub Integration
-→ Member 3
-
-Evidence Engine
-→ Member 4
-
-Resume UI
-→ Member 1
-
-Employer ATS
-→ Member 5
-
-Ownership does not mean nobody else can help.
-
-It means one person is responsible for ensuring the task reaches completion.
-
-32. Team Structure
+## 23. Team Structure & Communication
 
 Recommended five-member ownership:
+- Member 1: Frontend + Resume UI
+- Member 2: Backend + Firebase security
+- Member 3: Database + GitHub integration
+- Member 4: AI + Evidence + Matching
+- Member 5: Employer + ATS + Testing/DevOps
 
-Member	Primary responsibility
-Member 1	Frontend + Resume UI
-Member 2	Backend + Firebase security
-Member 3	Database + GitHub integration
-Member 4	AI + Evidence + Matching
-Member 5	Employer + ATS + Testing/DevOps
+No knowledge silos — critical modules should be understood by more than one member (Authentication, Database, GitHub integration, Evidence Engine, Application workflow, Deployment).
 
-Responsibilities may overlap during integration.
+Communication:
+- Use GitHub for permanent technical info (Issues, PRs, docs).
+- Use team chat for quick coordination; record important chat decisions in GitHub/docs.
 
-33. No Knowledge Silos
+Standups & sprints:
+- Daily standup: Yesterday/Today/Blocked
+- Weekly sprint planning: 1-week sprints by default, review backlog → select tasks → assign owners → identify dependencies → start sprint
 
-Critical modules should be understood by more than one team member.
+---
 
-At minimum:
+## 24. Dependency Management & API Contract Changes
 
-Authentication
-Database
-GitHub integration
-Evidence Engine
-Application workflow
-Deployment
+- Track dependencies explicitly and use agreed API contracts/mock data when possible.
+- API contract changes must be communicated prior to implementation (discuss, update API spec, update clients, implement, test).
 
-Documentation and cross-review should be used to maintain shared knowledge.
+---
 
-34. Communication Rules
+## 25. Environment, Secrets & Local Development
 
-Use GitHub for permanent technical information:
+- Never commit secrets to GitHub (credentials, API keys, private configs).
+- Use environment variables & repository `.env.example` only as examples.
+- Local development requirement: every developer must be able to clone, configure, run frontend/backend, connect to dev DB, and run tests.
 
-Issues
-PRs
-Technical discussions
-Architecture decisions
-Documentation
+---
 
-Use team chat for:
+## 26. Testing Philosophy
 
-Quick questions
-Meeting coordination
-Short updates
-Immediate blockers
+Testing levels:
+- Unit → Integration → API → End-to-end
+- Critical user journeys should be covered end-to-end eventually (e.g., student login → profile → resume → job → application → employer shortlist).
 
-Important decisions made in chat should be recorded in GitHub/docs.
+---
 
-35. Daily Standup
+## 27. Bug Management, Security & Privacy
 
-Keep daily standups short.
+Bug workflow:
+- Bug found → Reproduce → Issue → Assign → Fix branch → Test → PR → Review → Merge
 
-Each member reports:
+Security priority:
+- Issues involving cross-user access, auth bypass, private data exposure, credential leakage, DB corruption have highest priority.
 
-Yesterday:
-What did I complete?
+Privacy rules:
+- Candidate info exposed per authentication + authorization + visibility settings + business rules.
+- Employer notes must never be exposed through student-facing APIs.
 
-Today:
-What am I doing?
+---
 
-Blocked:
-Do I need help?
+## 28. Resource Ownership, History & Resume Rules
 
-The team lead focuses on removing blockers rather than turning the standup into a long meeting.
+- For user-owned resources, backend must derive ownership from authenticated Firebase UID → SkillBridge user → profile/resource ownership → permission check.
+- Avoid destructive deletion of important records (use status flags).
+- When submitting resume versions with applications, submitted versions must remain identifiable for historical integrity.
 
-36. Weekly Sprint
+Application & resume history:
+- Maintain application status history (APPLIED → SCREENING → SHORTLISTED → INTERVIEW → SELECTED).
 
-Default planning unit:
+---
 
-1 week
+## 29. External Service Failure Handling
 
-At the beginning of a sprint:
+- Treat external APIs as unreliable: on failure, surface a controlled error & useful user message; existing data remains safe and the app must not crash.
 
-Review backlog
- ↓
-Select achievable tasks
- ↓
-Assign owners
- ↓
-Identify dependencies
- ↓
-Start sprint
+---
 
-At the end:
+## 30. Decision-Making Process & Changing the Constitution
 
-Review completed work
- ↓
-Review unfinished work
- ↓
-Test integrated features
- ↓
-Update roadmap
-37. Dependency Management
+Decision process:
+1. Requirement → Options → Trade-offs → Decision → Documentation
+- Team lead coordinates decisions with technical reasoning.
 
-The team should explicitly track dependencies.
+Changing this constitution:
+1. Proposal → Team discussion → Impact assessment → Agreement → Update document → Commit/PR
+- Significant changes must follow this process.
 
-Example:
+---
 
-Database
-   ↓
-Backend API
-   ↓
-Frontend
+## 31. Documentation Hierarchy & Conflict Resolution
 
-However, developers should use agreed API contracts/mock data when possible rather than unnecessarily waiting for every other component to finish.
+Documentation order (canonical):
+1. 01-requirements.md
+2. 02-user-flows.md
+3. 03-system-architecture.md
+4. 04-database-design.md
+5. 05-api-specification.md
+6. 06-development-workflow.md
+7. 07-roadmap.md
+8. 08-project-constitution.md
 
-38. API Contract Changes
+If documents conflict:
+- STOP implementation → Identify conflict → Determine intended behavior → Update documents → Continue implementation
 
-An API change must be communicated before implementation.
+---
 
-Example:
+## 32. Roles & Responsibilities
 
-Changing:
+Team lead responsibilities:
+- Maintain scope, architecture consistency, task ownership, progress, PR quality, documentation, integration, risk management.
 
-GET /api/v1/profile/me
+Developer responsibilities:
+- Understand requirements, write maintainable code, test changes, follow Git workflow, create clear PRs, review teammates' work, report blockers, protect secrets, document decisions.
 
-to:
+---
 
-GET /api/v1/user/profile
+## 33. Final Team Rule & Status
 
-is not an informal implementation detail.
+- When uncertain about database structure, API contracts, auth, privacy, product scope, or data integrity, ask rather than assume.
+- This constitution becomes effective when the team agrees. After approval: Status → ACTIVE, Version → 1.0. Future major changes must be versioned.
 
-The team must:
+---
 
-Discuss
- ↓
-Update API specification
- ↓
-Update affected clients
- ↓
-Implement
- ↓
-Test
-39. Environment and Secrets
+## 34. Current Project Documentation
 
-Never commit secrets to GitHub.
-
-Examples:
-
-Firebase private credentials
-GitHub client secret
-Database password
-AI API key
-Storage credentials
-
-Use environment variables/secrets.
-
-The repository may contain:
-
-.env.example
-
-but not real credentials.
-
-40. Local Development Requirement
-
-Every developer must be able to:
-
-Clone repository
- ↓
-Configure environment
- ↓
-Run frontend
- ↓
-Run backend
- ↓
-Connect to development database
- ↓
-Run tests
-
-The project must not depend on one developer's personal computer.
-
-41. Testing Philosophy
-
-Testing should occur at multiple levels:
-
-Unit
- ↓
-Integration
- ↓
-API
- ↓
-End-to-End
-
-Critical user journeys should eventually be covered end-to-end.
-
-Example:
-
-Student
- ↓
-Login
- ↓
-Profile
- ↓
-Resume
- ↓
-Job
- ↓
-Application
- ↓
-Employer
- ↓
-Shortlist
-42. Bug Management
-
-Every meaningful bug should become a GitHub Issue.
-
-Workflow:
-
-Bug Found
- ↓
-Reproduce
- ↓
-Issue
- ↓
-Assign
- ↓
-Fix Branch
- ↓
-Test
- ↓
-PR
- ↓
-Review
- ↓
-Merge
-
-Do not silently fix important bugs without recording them when they affect project tracking.
-
-43. Security Priority
-
-Security issues involving:
-
-cross-user access
-authentication bypass
-unauthorized employer access
-private profile exposure
-credential leakage
-database corruption
-
-receive the highest priority.
-
-For example:
-
-One candidate seeing another candidate's private resume is a critical issue, even if the UI otherwise works correctly.
-
-44. Privacy Rules
-
-Candidate information must be exposed according to:
-
-Authentication
-+
-Authorization
-+
-Visibility settings
-+
-Business rules
-
-The existence of information in PostgreSQL does not mean an API may expose it.
-
-Employer responses must contain only recruiter-authorized candidate information.
-
-Employer notes must never be exposed through student-facing APIs.
-
-45. Resource Ownership
-
-For user-owned resources:
-
-Request
- ↓
-Authenticated Firebase UID
- ↓
-SkillBridge User
- ↓
-Profile/resource ownership
- ↓
-Permission check
- ↓
-Operation
-
-The client must not be allowed to modify another user's:
-
-Profile
-Projects
-Resumes
-Evidence
-Applications
-Other private resources
-46. Database History
-
-Avoid destructive deletion of important historical records.
-
-For example:
-
-Job
- ↓
-Application
- ↓
-Interview
-
-Closing a job should normally mean:
-
-status = CLOSED
-
-rather than deleting the job and destroying application history.
-
-47. Resume History
-
-When a candidate applies using a resume version, the submitted version must remain identifiable.
-
-Therefore:
-
-Application
- ├── Resume
- └── Resume Version
-
-The candidate may subsequently edit the resume without changing the historical version associated with the application.
-
-48. Application History
-
-Current status alone is not enough.
-
-The system should maintain:
-
-Application
-     ↓
-Application Status History
-
-Example:
-
-APPLIED
- ↓
-SCREENING
- ↓
-SHORTLISTED
- ↓
-INTERVIEW
- ↓
-SELECTED
-
-This allows the platform to preserve the hiring timeline.
-
-49. External Service Failure
-
-External APIs must be treated as unreliable dependencies.
-
-For GitHub or AI failures:
-
-External service fails
-       ↓
-Controlled error
-       ↓
-Useful user message
-       ↓
-Existing SkillBridge data remains safe
-
-The entire application must not crash merely because an external service temporarily fails.
-
-50. Decision-Making Process
-
-When the team faces an important technical decision:
-
-Requirement
- ↓
-Options
- ↓
-Trade-offs
- ↓
-Decision
- ↓
-Documentation
-
-Decisions should consider:
-
-Project requirements
-Security
-Maintainability
-Cost
-Complexity
-Development time
-Team capability
-
-The team lead coordinates decisions but should not make arbitrary decisions without technical reasoning.
-
-51. Changing the Constitution
-
-This document itself can evolve.
-
-A significant change should follow:
-
-Proposal
- ↓
-Team discussion
- ↓
-Impact assessment
- ↓
-Agreement
- ↓
-Update document
- ↓
-Commit/PR
-
-Do not silently change a major architecture rule inside an implementation PR.
-
-52. Documentation Hierarchy
-
-The SkillBridge project should use the following documentation hierarchy:
-
-01-requirements.md
-        ↓
-02-user-flows.md
-        ↓
-03-system-architecture.md
-        ↓
-04-database-design.md
-        ↓
-05-api-specification.md
-        ↓
-06-development-workflow.md
-        ↓
-07-roadmap.md
-        ↓
-08-project-constitution.md
-
-When documents conflict, the team must stop and resolve the conflict rather than letting developers choose different interpretations.
-
-53. Conflict Resolution Between Documents
-
-If two documents disagree:
-
-STOP IMPLEMENTATION
-        ↓
-Identify conflict
-        ↓
-Determine intended product behavior
-        ↓
-Update affected documents
-        ↓
-Continue implementation
-
-No developer should silently choose whichever document they prefer.
-
-54. Team Lead Responsibilities
-
-The team lead is responsible for maintaining:
-
-Scope
-Architecture consistency
-Task ownership
-Dependencies
-Progress
-Technical coordination
-PR quality
-Documentation
-Integration
-Risk management
-
-The team lead is not responsible for personally writing all important code.
-
-55. Developer Responsibilities
-
-Every developer is responsible for:
-
-Understanding assigned requirements
-Writing maintainable code
-Testing changes
-Following Git workflow
-Creating clear PRs
-Reviewing teammates' work
-Reporting blockers early
-Protecting secrets
-Following security rules
-Documenting important technical decisions
-56. What "Done" Means for the Team
-
-The team should never declare:
-
-"My code is done."
-
-The correct statement is:
-
-"The task is implemented, tested, reviewed, integrated, and meets its acceptance criteria."
-
-That is the team's shared definition of completion.
-
-57. Core SkillBridge Development Loop
-
-The complete engineering lifecycle is:
-
-                    REQUIREMENT
-                         ↓
-                     USER FLOW
-                         ↓
-                     ARCHITECTURE
-                         ↓
-                   DATABASE / API
-                         ↓
-                    GITHUB ISSUE
-                         ↓
-                     ASSIGNMENT
-                         ↓
-                      BRANCH
-                         ↓
-                       CODE
-                         ↓
-                       TEST
-                         ↓
-                       COMMIT
-                         ↓
-                        PUSH
-                         ↓
-                        PR
-                         ↓
-                      REVIEW
-                         ↓
-                   APPROVE / FIX
-                         ↓
-                       MERGE
-                         ↓
-                INTEGRATION TEST
-                         ↓
-                        DONE
-58. Final Team Rule
-
-When there is uncertainty, the developer should ask before assuming when the decision can affect:
-
-Database structure
-API contracts
-Authentication
-Authorization
-Privacy
-Product scope
-External integrations
-Data integrity
-
-Small implementation decisions can be made independently.
-
-High-impact architectural decisions must be discussed.
-
-59. Constitution Status
-
-This constitution becomes effective when the team agrees to it.
-
-Until then, it is a proposed team standard.
-
-Once approved:
-
-Status → ACTIVE
-Version → 1.0
-
-All future major changes must be versioned.
-
-60. Current Project Documentation
 docs/
-│
-├── 01-requirements.md
-├── 02-user-flows.md
-├── 03-system-architecture.md
-├── 04-database-design.md
-├── 05-api-specification.md
-├── 06-development-workflow.md
-├── 07-roadmap.md
-└── 08-project-constitution.md
+```
+01-requirements.md
+02-user-flows.md
+03-system-architecture.md
+04-database-design.md
+05-api-specification.md
+06-development-workflow.md
+07-roadmap.md
+08-project-constitution.md
+```
+
+---
+
+(End of document)
