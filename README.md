@@ -46,8 +46,6 @@ Make sure Git is installed:
 git --version
 ```
 
-If Git is installed, you will see a version number.
-
 ## Configure Git
 
 Use your own GitHub identity:
@@ -57,31 +55,15 @@ git config --global user.name "Your Name"
 git config --global user.email "your-email@example.com"
 ```
 
-Use the email associated with your GitHub account where appropriate.
-
 ---
 
 # 2. Clone the Repository
 
-Clone SkillBridge to your computer:
-
 ```bash
 git clone https://github.com/heyvinay-lab/SkillBridge.git
-```
-
-Move into the project:
-
-```bash
 cd SkillBridge
-```
-
-Check the remote:
-
-```bash
 git remote -v
 ```
-
-You should see the SkillBridge GitHub repository.
 
 ---
 
@@ -94,7 +76,7 @@ git checkout main
 git pull origin main
 ```
 
-This makes sure your local `main` contains the latest merged work.
+Always do this before starting a new task.
 
 ---
 
@@ -117,13 +99,7 @@ git checkout -b feature/landing-employer-ecosystem
 git checkout -b feature/landing-motion-qa
 ```
 
-For a bug:
-
-```text
-fix/<short-bug-name>
-```
-
-Example:
+For bugs:
 
 ```bash
 git checkout -b fix/mobile-navbar-overflow
@@ -133,22 +109,18 @@ git checkout -b fix/mobile-navbar-overflow
 
 # 5. Check Your Branch
 
-Run:
-
 ```bash
 git branch
 ```
 
 The branch with `*` is your current branch.
 
-Example:
-
 ```text
   main
 * feature/landing-brand-hero
 ```
 
-If you see `main` with `*`, stop and switch to your feature branch before changing code.
+If `main` has `*`, stop and switch to your feature branch before changing code.
 
 ---
 
@@ -161,28 +133,142 @@ Before writing code:
 1. Open your assigned Issue.
 2. Read the objective.
 3. Read the acceptance criteria.
-4. Check the files/components you own.
+4. Check the files/folder you own.
 5. Check dependencies.
 6. Check whether another teammate must finish something first.
-7. Comment on the Issue if something is unclear.
+7. Ask the project lead if anything is unclear.
 
 Do not expand the scope without discussing it with the project lead.
 
 ---
 
-# 7. Use AI Correctly
+# 7. Feature Folder Separation — IMPORTANT
+
+**Each major feature must have its own folder.**
+
+Do not put every feature's code into one shared folder.
+
+The purpose is to allow multiple teammates and AI tools to work independently with fewer conflicts.
+
+### Example
+
+```text
+frontend/
+├── landing/
+│   ├── branding/
+│   ├── hero/
+│   ├── product-story/
+│   ├── employer/
+│   ├── ecosystem/
+│   └── motion/
+│
+├── student/
+│   ├── dashboard/
+│   ├── profile/
+│   ├── evidence/
+│   ├── resumes/
+│   ├── jobs/
+│   └── applications/
+│
+├── employer/
+│   ├── dashboard/
+│   ├── jobs/
+│   ├── candidates/
+│   ├── ats/
+│   └── interviews/
+│
+└── shared/
+    ├── components/
+    ├── hooks/
+    ├── utils/
+    └── types/
+```
+
+The exact structure may evolve as the application grows, but the principle remains:
+
+> **One feature = one clear folder/module.**
+
+### Before creating a new folder
+
+Check whether the feature already has an appropriate folder.
+
+Do not create duplicates such as:
+
+```text
+resume/
+resumes/
+resume-builder/
+resume-feature/
+```
+
+Choose one agreed location and keep it consistent.
+
+### Shared code
+
+If something is genuinely reusable across multiple features, put it in the agreed shared location.
+
+Example:
+
+```text
+shared/components/Button
+shared/components/Modal
+shared/hooks/useAuth
+shared/utils/formatDate
+```
+
+Do not put feature-specific code into `shared/` just because it is convenient.
+
+---
+
+# 8. Feature Ownership
+
+Every feature has an owner.
+
+The owner is responsible for:
+
+- Implementation
+- Understanding the code
+- Testing
+- AI-generated code review
+- Documentation where required
+- Pull Request
+- Fixing review comments
+
+For the landing page:
+
+```text
+Person 1
+  frontend/landing/branding/
+  frontend/landing/hero/
+
+Person 2
+  frontend/landing/product-story/
+
+Person 3
+  frontend/landing/employer/
+  frontend/landing/ecosystem/
+
+Person 4
+  frontend/landing/motion/
+  final landing-page QA
+```
+
+The project lead owns final integration and review.
+
+---
+
+# 9. Use AI Correctly
 
 You may use ChatGPT, GitHub Copilot, Claude, Codex, or other AI tools.
 
 AI is an **implementation assistant**, not the owner of the task.
 
-### Before asking AI to code
-
-Give it:
+Before asking AI to code, give it:
 
 - The GitHub Issue
 - Your exact task
 - Existing project structure
+- Your feature folder
 - Files you are allowed to modify
 - SkillBridge design/system rules
 
@@ -191,67 +277,50 @@ Give it:
 ```text
 You are helping me implement my assigned SkillBridge GitHub Issue.
 
-Read the task requirements carefully and work only within the assigned scope.
-Use the existing project structure and design system.
-Do not modify another teammate's feature or files unless absolutely required.
+Read the issue carefully and work only within my assigned feature folder.
+Use the existing SkillBridge project structure and design system.
+Do not modify another teammate's feature folder.
 Do not invent product requirements.
 Do not add unnecessary dependencies.
 Create clean, reusable, maintainable code.
 After implementation, explain what changed and what I should test.
 ```
 
-### You are responsible for AI-generated code
+### AI responsibility rule
+
+The person assigned to the Issue is responsible for all AI-generated code.
 
 Before opening a PR:
 
 - Understand the code.
 - Run the application.
-- Test your feature.
+- Test the feature.
 - Check console errors.
 - Check responsive behavior where relevant.
 - Remove unused code.
 - Remove unnecessary dependencies.
-- Make sure the implementation matches the Issue.
+- Confirm the code follows the Issue.
 
-**Do not blindly copy AI-generated code.**
+**Never blindly accept AI-generated code.**
 
 ---
 
-# 8. Work Only in Your Scope
+# 10. Work Only in Your Scope
 
-SkillBridge is being developed by multiple people simultaneously.
+Do not edit another teammate's feature folder unnecessarily.
 
-Avoid editing another person's files unnecessarily.
-
-For the landing page, the current ownership is:
-
-```text
-Person 1
-  branding/
-  components/brand/
-  components/hero/
-
-Person 2
-  components/product-story/
-
-Person 3
-  components/employer/
-  components/ecosystem/
-
-Person 4
-  motion/ and final QA changes
-```
-
-If you need to change another person's area:
+If another feature needs a change:
 
 1. Discuss it with the project lead.
-2. Explain why the change is required.
-3. Keep the change as small as possible.
+2. Explain why it is needed.
+3. Keep the change minimal.
 4. Mention it clearly in the Pull Request.
+
+This rule is especially important when multiple people are using AI coding tools.
 
 ---
 
-# 9. Save Your Work
+# 11. Save Your Work
 
 Check changed files:
 
@@ -259,25 +328,25 @@ Check changed files:
 git status
 ```
 
-Review the changes:
+Review changes:
 
 ```bash
 git diff
 ```
 
-Add your changes:
+Stage:
 
 ```bash
 git add .
 ```
 
-Commit with a clear message:
+Commit:
 
 ```bash
 git commit -m "feat(landing): build hero section"
 ```
 
-Recommended commit prefixes:
+Recommended prefixes:
 
 ```text
 feat:     new feature
@@ -289,17 +358,9 @@ test:     tests
 chore:    maintenance
 ```
 
-Examples:
-
-```bash
-git commit -m "feat(landing): add SkillBridge hero"
-git commit -m "feat(landing): add evidence section"
-git commit -m "fix(landing): fix mobile navigation"
-```
-
 ---
 
-# 10. Push Your Branch
+# 12. Push Your Branch
 
 First push:
 
@@ -307,42 +368,34 @@ First push:
 git push -u origin feature/your-task-name
 ```
 
-Later pushes:
+Later:
 
 ```bash
 git push
 ```
 
-Your branch will then be available on GitHub.
-
 ---
 
-# 11. Create a Pull Request
+# 13. Create a Pull Request
 
-Open the SkillBridge repository on GitHub.
-
-Go to:
+On GitHub:
 
 **Pull requests → New pull request**
 
-Select:
+Use:
 
 ```text
 base: main
 compare: feature/your-task-name
 ```
 
-Create the PR.
-
-### PR title format
+### PR title
 
 ```text
 feat(landing): build hero section
 ```
 
 ### PR description
-
-Use:
 
 ```md
 ## What changed
@@ -364,18 +417,20 @@ Closes #ISSUE_NUMBER
 
 ## AI usage
 
-AI was used for implementation assistance and the generated code was reviewed and tested manually.
+AI was used for implementation assistance. The generated code was reviewed,
+understood, and tested manually.
 ```
 
 ---
 
-# 12. Code Review
+# 14. Code Review
 
-Do not merge your own PR without the required project review process.
+Do not merge your own PR without the project review process.
 
-The project lead will check:
+The project lead checks:
 
 - Correct scope
+- Feature-folder separation
 - Code quality
 - Design consistency
 - Security where relevant
@@ -392,57 +447,40 @@ git commit -m "fix: address review feedback"
 git push
 ```
 
-The existing PR will automatically update.
+The existing PR will update automatically.
 
 ---
 
-# 13. After Your PR Is Merged
-
-After the PR is merged:
+# 15. After Your PR Is Merged
 
 ```bash
 git checkout main
 git pull origin main
 ```
 
-You can then delete your old local branch:
+Then you may delete your old local branch:
 
 ```bash
 git branch -d feature/your-task-name
-```
-
-Delete the remote branch if it has not already been deleted through GitHub:
-
-```bash
-git push origin --delete feature/your-task-name
 ```
 
 Only delete a branch after confirming the PR was merged.
 
 ---
 
-# 14. Starting Your Next Task
-
-Always update `main` first:
+# 16. Starting Your Next Task
 
 ```bash
 git checkout main
 git pull origin main
-```
-
-Then create a new branch:
-
-```bash
 git checkout -b feature/next-task
 ```
 
-Do not continue unrelated work on an old feature branch.
+Start every new task from the latest `main`.
 
 ---
 
-# 15. If You Made Changes on the Wrong Branch
-
-Do not panic and do not immediately push.
+# 17. If You Work on the Wrong Branch
 
 Check:
 
@@ -451,132 +489,151 @@ git status
 git branch
 ```
 
-If the changes are uncommitted, contact the project lead before moving them.
-
-If you accidentally committed to `main`, **do not force-push or rewrite shared history**. Tell the project lead so the team can fix it safely.
+If you accidentally committed to `main`, **do not force-push or rewrite shared history**.
+Tell the project lead so it can be fixed safely.
 
 ---
 
-# 16. If `main` Changed While You Were Working
+# 18. If `main` Changes While You Work
 
-Before opening a PR, update your branch if necessary.
-
-First:
+Before opening a PR, make sure your branch is compatible with the latest `main`.
 
 ```bash
 git checkout main
 git pull origin main
-```
-
-Then return to your branch:
-
-```bash
 git checkout feature/your-task-name
 ```
 
-If the team lead asks you to update your branch, use the agreed team method. Do not force-push without approval.
+If you are not comfortable resolving conflicts, ask the project lead before doing so.
 
-For beginners, the safest approach is to ask the project lead before resolving a complicated merge conflict.
+Never force-push a shared branch without approval.
 
 ---
 
-# 17. Merge Conflict
+# 19. Merge Conflicts
 
-A conflict means your branch and `main` changed the same part of a file.
+A conflict means two branches changed the same part of a file.
 
-Do not randomly delete code to make the conflict disappear.
+Do not randomly delete code to remove the conflict.
 
-If you are unsure:
+If unsure:
 
 1. Stop.
 2. Do not force-push.
-3. Send the conflict details to the project lead.
-4. Resolve it together.
+3. Tell the project lead.
+4. Resolve the conflict carefully.
+5. Test the affected feature.
 
 ---
 
-# 18. Landing Page Team Workflow
+# 20. Landing Page Team Workflow
 
-The current landing-page work is split into four Issues:
+The current landing page is divided into four Issues:
 
 ### Issue 1 — Brand Identity + Navbar + Hero
 
-Owner: Person 1
+Branch:
 
 ```text
 feature/landing-brand-hero
 ```
 
+Folders:
+
+```text
+frontend/landing/branding/
+frontend/landing/hero/
+```
+
 ### Issue 2 — Product Story + Student Experience
 
-Owner: Person 2
+Branch:
 
 ```text
 feature/landing-product-story
 ```
 
+Folder:
+
+```text
+frontend/landing/product-story/
+```
+
 ### Issue 3 — Employer + College + Ecosystem
 
-Owner: Person 3
+Branch:
 
 ```text
 feature/landing-employer-ecosystem
 ```
 
+Folders:
+
+```text
+frontend/landing/employer/
+frontend/landing/ecosystem/
+```
+
 ### Issue 4 — Motion + Responsive + QA
 
-Owner: Person 4
+Branch:
 
 ```text
 feature/landing-motion-qa
 ```
 
-Issue 4 should perform the major integrated QA work after Issues 1–3 have usable implementations.
+Folder:
+
+```text
+frontend/landing/motion/
+```
+
+Issue 4 should do the major integrated QA after Issues 1–3 have usable implementations.
 
 ---
 
-# 19. Team Rules
+# 21. Team Rules
 
 ### DO
 
 - Create an Issue before coding.
 - Create a separate branch.
 - Pull the latest `main` before starting.
+- Work inside your assigned feature folder.
 - Keep commits focused.
 - Test your changes.
 - Create a Pull Request.
 - Ask for review.
-- Keep your work within the assigned scope.
 - Use AI responsibly.
-- Tell the team when you are blocked.
+- Communicate when blocked.
 
 ### DON'T
 
 - Do not push directly to `main`.
 - Do not work directly on another person's branch.
-- Do not copy another person's implementation without discussion.
+- Do not modify another feature folder unnecessarily.
 - Do not blindly accept AI-generated code.
 - Do not add unnecessary libraries.
-- Do not change the architecture without approval.
+- Do not change architecture without approval.
 - Do not commit secrets or API keys.
 - Do not commit `.env` files containing secrets.
 - Do not force-push shared branches.
-- Do not close an Issue just because coding is finished; follow the acceptance criteria.
+- Do not close an Issue before its acceptance criteria are satisfied.
 
 ---
 
-# 20. Quick Command Cheat Sheet
+# 22. Quick Command Cheat Sheet
 
 ```bash
 # Clone
 git clone https://github.com/heyvinay-lab/SkillBridge.git
 cd SkillBridge
 
-# Get latest main
+# Latest main
 git checkout main
 git pull origin main
 
-# Create your branch
+# New feature branch
 git checkout -b feature/your-task
 
 # Check status
@@ -615,4 +672,4 @@ We want code that is:
 - Reusable
 - Easy for another teammate to continue
 
-**Build your assigned part well, communicate with the team, and integrate through Pull Requests.**
+**Build your assigned feature in its own folder, communicate with the team, and integrate through Pull Requests.**
