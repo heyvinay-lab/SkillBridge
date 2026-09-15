@@ -1,798 +1,782 @@
-1. Database decisions — locked
-Decision	Choice
-Database	PostgreSQL
-Primary key	UUID
-Authentication	Firebase Authentication
-Firebase UID	Unique external identity, not the database PK
-Timestamps	TIMESTAMPTZ
-Soft deletion	Used where historical records matter
-User roles	Separate role/membership model, not one fragile role column
-Skills	Central normalized skill table
-Many-to-many	Explicit junction tables
-Applications	Separate current status + status history
-Job questions	Separate questions + answers
-Resumes	Master profile remains source of truth
-Evidence	Explicit source types and evidence records
-GitHub	External account + repository tables
-Auditability	Important business changes recorded
-2. Core design principle
+# SkillBridge — Database decisions
 
-There are four different concepts that must not be mixed:
+Last updated: (from original document)
 
-Firebase
-   ↓
-Identity
+---
 
-User
-   ↓
-Platform account
+## Contents
 
-Profile
-   ↓
-Professional information
+1. [High-level decisions](#high-level-decisions)  
+2. [Core design principle](#core-design-principle)  
+3. [User and authentication](#user-and-authentication)  
+4. [Roles](#roles)  
+5. [Student profile](#student-profile)  
+6. [Education](#education)  
+7. [Experience](#experience)  
+8. [Projects](#projects)  
+9. [Skills](#skills)  
+10. [Profile ↔ Skill](#profile--skill)  
+11. [Project ↔ Skill](#project--skill)  
+12. [Evidence (redesigned)](#evidence---redesigned)  
+13. [Evidence source details](#evidence-source-details)  
+14. [Certifications](#certifications)  
+15. [Achievements / Awards](#achievements--awards)  
+16. [External accounts](#external-accounts)  
+17. [GitHub repositories](#github-repositories)  
+18. [Project ↔ GitHub repository](#project--github-repository)  
+19. [Resume structure](#resume-structure)  
+20. [Resume versions](#resume-versions)  
+21. [Why JSONB for resume content?](#why-jsonb-for-resume-content)  
+22. [Companies](#companies)  
+23. [Employer memberships](#employer-memberships)  
+24. [Jobs](#jobs)  
+25. [Job skills](#job-skills)  
+26. [Job custom questions](#job-custom-questions)  
+27. [Applications](#applications)  
+28. [Why store both Resume and Resume Version?](#why-store-both-resume-and-resume-version)  
+29. [Application answers](#application-answers)  
+30. [Application status history](#application-status-history)  
+31. [Application notes](#application-notes)  
+32. [Interviews](#interviews)  
+33. [Candidate availability / preferences](#candidate-availability--preferences)  
+34. [Important relationship map](#important-relationship-map)  
+35. [Final core table list](#final-core-table-list)  
+36. [Foreign-key rules](#foreign-key-rules)  
+37. [Never delete important business history](#never-delete-important-business-history)  
+38. [Indexes](#indexes)  
+39. [Data validation rules](#data-validation-rules)  
+40. [Privacy / visibility](#privacy--visibility)  
+41. [The biggest architectural rule](#the-biggest-architectural-rule)  
+42. [AI data rule](#ai-data-rule)  
+43. [MVP vs Future tables](#mvp-vs-future-tables)  
+44. [Schema versioning](#schema-versioning)  
+45. [Development rule for the whole team](#development-rule-for-the-whole-team)
 
-Resume
-   ↓
-Presentation of profile information
+---
 
-Therefore:
+## 1. High-level decisions
 
-The resume is NOT the candidate's master database record.
+| Decision | Choice |
+|---|---|
+| Database | PostgreSQL |
+| Primary key | UUID |
+| Authentication | Firebase Authentication |
+| Firebase UID | Unique external identity, not DB PK |
+| Timestamps | TIMESTAMPTZ |
+| Soft deletion | Used where historical records matter |
+| User roles | Separate role/membership model, not a single role column |
+| Skills | Central normalized skill table |
+| Many-to-many | Explicit junction tables |
+| Applications | Separate current status + status history |
+| Job questions | Separate questions + answers |
+| Resumes | Master profile remains source of truth |
+| Evidence | Explicit source types and evidence records |
+| GitHub | External account + repository tables |
+| Auditability | Important business changes recorded |
 
-The flow is:
+---
 
-User
-  ↓
-Profile
-  ├── Education
-  ├── Experience
-  ├── Projects
-  ├── Skills
-  ├── Certifications
-  └── Evidence
-        ↓
-      Resume
-3. User and authentication
-users
+## 2. Core design principle
+
+There are four distinct concepts that must not be mixed:
+
+- Firebase → Identity
+- User → Platform account
+- Profile → Professional information
+- Resume → Presentation of profile information
+
+Important: The resume is NOT the candidate's master database record.
+
+Flow:
+
+User  
+→ Profile  
+  ├── Education  
+  ├── Experience  
+  ├── Projects  
+  ├── Skills  
+  ├── Certifications  
+  └── Evidence  
+     ↓  
+   Resume
+
+---
+
+## 3. User and authentication
+
+Table: `users`
+
+```text
 users
 --------------------------------
-id                  UUID PK
-firebase_uid        VARCHAR UNIQUE NOT NULL
-email               VARCHAR
-status              ENUM
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-deleted_at          TIMESTAMPTZ NULL
-Rules
+id            UUID PK
+firebase_uid  VARCHAR UNIQUE NOT NULL
+email         VARCHAR
+status        ENUM
+created_at    TIMESTAMPTZ
+updated_at    TIMESTAMPTZ
+deleted_at    TIMESTAMPTZ NULL
+```
 
-firebase_uid must be unique.
+Rules:
 
-Do not make email the primary key.
+- `firebase_uid` must be unique.
+- Do not make `email` the primary key (emails can change; Firebase owns authentication).
+- The Firebase UID is the stable external identity.
 
-Why?
+---
 
-email can change
-Firebase owns authentication
-UID is the stable external identity
-4. Roles
+## 4. Roles
 
-Earlier we had:
+Avoid a single `User.role` column. Use normalized roles and a junction table.
 
-User.role
+Table: `roles`
 
-That's too restrictive.
-
-A better design:
-
-roles
+```text
 roles
 ----------------
-id          UUID PK
-code        VARCHAR UNIQUE
-name        VARCHAR
+id    UUID PK
+code  VARCHAR UNIQUE
+name  VARCHAR
+```
 
-Initial values:
+Initial values: `STUDENT`, `EMPLOYER`, `ADMIN`
 
-STUDENT
-EMPLOYER
-ADMIN
-user_roles
+Table: `user_roles`
+
+```text
 user_roles
 -------------------------
-user_id       UUID FK
-role_id       UUID FK
-created_at    TIMESTAMPTZ
+user_id     UUID FK
+role_id     UUID FK
+created_at  TIMESTAMPTZ
 
 PK(user_id, role_id)
+```
 
-Now one account can theoretically have multiple roles without changing the database structure.
+Now one account can have multiple roles.
 
-5. Student profile
+---
+
+## 5. Student profile
+
+Table: `profiles`
+
+```text
 profiles
-profiles
 --------------------------------
-id                  UUID PK
-user_id             UUID UNIQUE FK
-first_name          VARCHAR
-last_name           VARCHAR
-headline            VARCHAR
-summary             TEXT
-phone               VARCHAR NULL
-location_text       VARCHAR NULL
-portfolio_url       TEXT NULL
-profile_photo_url   TEXT NULL
-visibility          ENUM
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id                 UUID PK
+user_id            UUID UNIQUE FK
+first_name         VARCHAR
+last_name          VARCHAR
+headline           VARCHAR
+summary            TEXT
+phone              VARCHAR NULL
+location_text      VARCHAR NULL
+portfolio_url      TEXT NULL
+profile_photo_url  TEXT NULL
+visibility         ENUM
+created_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+```
 
-Relationship:
+Relationship: `users` 1 ── 1 `profiles`  
+`user_id UNIQUE` ensures one profile per user.
 
-users 1 ───── 1 profiles
-Important
+---
 
-user_id UNIQUE ensures one profile per user.
+## 6. Education
 
-6. Education
+Table: `educations`
+
+```text
 educations
-educations
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
-institution_name    VARCHAR
-degree              VARCHAR
-field_of_study      VARCHAR
-start_date          DATE NULL
-end_date            DATE NULL
-grade_value         VARCHAR NULL
-grade_type          VARCHAR NULL
-description         TEXT NULL
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id               UUID PK
+profile_id       UUID FK
+institution_name VARCHAR
+degree           VARCHAR
+field_of_study   VARCHAR
+start_date       DATE NULL
+end_date         DATE NULL
+grade_value      VARCHAR NULL
+grade_type       VARCHAR NULL
+description      TEXT NULL
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
+```
 
-Relationship:
+Relationship: `profile` 1 ── N `educations`
 
-profile 1 ───── N education
-7. Experience
-experiences
+---
+
+## 7. Experience
+
+Table: `experiences`
+
+```text
 experiences
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
+id                 UUID PK
+profile_id         UUID FK
 organization_name  VARCHAR
-job_title           VARCHAR
-employment_type     VARCHAR
-location            VARCHAR NULL
-start_date          DATE
-end_date            DATE NULL
-is_current          BOOLEAN
-description         TEXT
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-deleted_at          TIMESTAMPTZ NULL
-Constraints
+job_title          VARCHAR
+employment_type    VARCHAR
+location           VARCHAR NULL
+start_date         DATE
+end_date           DATE NULL
+is_current         BOOLEAN
+description        TEXT
+created_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+deleted_at         TIMESTAMPTZ NULL
+```
 
-If:
+Constraints / rules:
+- If `is_current = true`, `end_date` should normally be NULL.
+- Reject records where `end_date < start_date`.
 
-is_current = true
+---
 
-then end_date should normally be NULL.
+## 8. Projects
 
-If:
+Table: `projects`
 
-end_date < start_date
-
-reject the record.
-
-8. Projects
-projects
+```text
 projects
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
-name                VARCHAR NOT NULL
-description         TEXT
-role_description    TEXT NULL
-github_url          TEXT NULL
-live_url            TEXT NULL
-start_date          DATE NULL
-end_date            DATE NULL
-visibility          ENUM
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-deleted_at          TIMESTAMPTZ NULL
-9. Skills
+id                 UUID PK
+profile_id         UUID FK
+name               VARCHAR NOT NULL
+description        TEXT
+role_description   TEXT NULL
+github_url         TEXT NULL
+live_url           TEXT NULL
+start_date         DATE NULL
+end_date           DATE NULL
+visibility         ENUM
+created_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+deleted_at         TIMESTAMPTZ NULL
+```
 
-This is an area where the previous design needed improvement.
+---
 
-We don't want:
+## 9. Skills
 
-Java
-java
-JAVA
-Java Programming
+Avoid duplicates (different casing or phrasing). Normalize skill names.
 
-to become four skills.
+Table: `skills`
 
-skills
+```text
 skills
 --------------------------------
-id                  UUID PK
-name                VARCHAR UNIQUE
-normalized_name     VARCHAR UNIQUE
-category            VARCHAR
-created_at          TIMESTAMPTZ
+id               UUID PK
+name             VARCHAR UNIQUE
+normalized_name  VARCHAR UNIQUE
+category         VARCHAR
+created_at       TIMESTAMPTZ
+```
 
 Example:
+- `name = Spring Boot`
+- `normalized_name = spring_boot`
+- `category = FRAMEWORK`
 
-name = Spring Boot
-normalized_name = spring_boot
-category = FRAMEWORK
-10. Profile ↔ Skill
+---
 
-A candidate can have many skills.
+## 10. Profile ↔ Skill
 
-A skill belongs to many candidates.
+Many-to-many between profiles and skills.
 
-Therefore:
+Table: `profile_skills`
 
-profile_skills
+```text
 profile_skills
 --------------------------------
-profile_id          UUID FK
-skill_id            UUID FK
-proficiency_level   VARCHAR NULL
-years_experience    NUMERIC NULL
-source_type         VARCHAR
-created_at          TIMESTAMPTZ
+profile_id         UUID FK
+skill_id           UUID FK
+proficiency_level  VARCHAR NULL
+years_experience   NUMERIC NULL
+source_type        VARCHAR
+created_at         TIMESTAMPTZ
 
 PK(profile_id, skill_id)
+```
 
-This prevents duplicate:
+Prevents duplicate profile+skill rows.
 
-Vinay + Java
-Vinay + Java
-Vinay + Java
-11. Project ↔ Skill
-project_skills
+---
+
+## 11. Project ↔ Skill
+
+Table: `project_skills`
+
+```text
 project_skills
 --------------------------------
-project_id          UUID FK
-skill_id            UUID FK
-created_at          TIMESTAMPTZ
+project_id    UUID FK
+skill_id      UUID FK
+created_at    TIMESTAMPTZ
 
 PK(project_id, skill_id)
+```
 
-Example:
+Example skills for a project: Java, Spring Boot, PostgreSQL, React
 
-SkillBridge
- ├── Java
- ├── Spring Boot
- ├── PostgreSQL
- └── React
-12. Evidence — redesigned properly
+---
 
-This was one of the biggest weaknesses in the earlier design.
+## 12. Evidence — redesigned properly
 
-A generic:
+Evidence must describe what is being supported and where it came from.
 
-Evidence
-source_url
-source
+Table: `evidence`
 
-isn't enough.
-
-We need to distinguish what is being supported and where the evidence comes from.
-
-evidence
+```text
 evidence
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
-skill_id            UUID FK NULL
-project_id          UUID FK NULL
-type                VARCHAR
-title               VARCHAR
-description         TEXT
-status              ENUM
-confidence_score    NUMERIC NULL
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id               UUID PK
+profile_id       UUID FK
+skill_id         UUID FK NULL
+project_id       UUID FK NULL
+type             VARCHAR
+title            VARCHAR
+description      TEXT
+status           ENUM
+confidence_score NUMERIC NULL
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
+```
 
-Possible type:
+Possible `type` values:
+- GITHUB_REPOSITORY, PROJECT, CERTIFICATION, EXPERIENCE, CODING_PROFILE, PORTFOLIO, DOCUMENT, ASSESSMENT, SELF_REPORTED
 
-GITHUB_REPOSITORY
-PROJECT
-CERTIFICATION
-EXPERIENCE
-CODING_PROFILE
-PORTFOLIO
-DOCUMENT
-ASSESSMENT
-SELF_REPORTED
+Possible `status` values:
+- SELF_REPORTED, SUPPORTED, VERIFIED, UNVERIFIED, REJECTED
 
-Possible status:
+Important: `VERIFIED` should only be used when SkillBridge has a clear verification mechanism (AI alone does not verify).
 
-SELF_REPORTED
-SUPPORTED
-VERIFIED
-UNVERIFIED
-REJECTED
-Important
+---
 
-VERIFIED should only be used when SkillBridge has a clearly defined verification mechanism.
+## 13. Evidence source details
 
-AI saying:
+Instead of putting every possible source field into `evidence`, use separate source tables for structured data:
 
-“This looks real”
+- `github_repository` (linked from `evidence`)
+- `certification`
+- `assessment_result`
 
-does not automatically mean verified.
+This prevents a single bloated table with many mostly-NULL columns.
 
-13. Evidence source details
+---
 
-Rather than putting every possible source field directly into evidence, use separate source tables where structured data matters.
+## 14. Certifications
 
-For GitHub:
+Table: `certifications`
 
-evidence
-   ↓
-github_repository
-
-For certificates:
-
-evidence
-   ↓
-certification
-
-For assessments:
-
-evidence
-   ↓
-assessment_result
-
-This prevents one giant table full of:
-
-github_url
-certificate_url
-assessment_id
-coding_url
-portfolio_url
-...
-
-with most fields NULL.
-
-14. Certifications
-certifications
+```text
 certifications
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
-name                VARCHAR
-issuing_organization VARCHAR
-credential_id       VARCHAR NULL
-credential_url      TEXT NULL
-issued_date         DATE NULL
-expiry_date         DATE NULL
-description         TEXT NULL
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-15. Achievements / awards
+id                    UUID PK
+profile_id            UUID FK
+name                  VARCHAR
+issuing_organization  VARCHAR
+credential_id         VARCHAR NULL
+credential_url        TEXT NULL
+issued_date           DATE NULL
+expiry_date           DATE NULL
+description           TEXT NULL
+created_at            TIMESTAMPTZ
+updated_at            TIMESTAMPTZ
+```
+
+---
+
+## 15. Achievements / awards
+
+Table: `achievements`
+
+```text
+achievements
+--------------------------------
+id               UUID PK
+profile_id       UUID FK
+title            VARCHAR
+organization     VARCHAR NULL
+description      TEXT
+achievement_date DATE NULL
+url              TEXT NULL
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
+```
 
 Don't force achievements into projects.
 
-achievements
-achievements
---------------------------------
-id                  UUID PK
-profile_id          UUID FK
-title               VARCHAR
-organization        VARCHAR NULL
-description         TEXT
-achievement_date    DATE NULL
-url                 TEXT NULL
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-16. External accounts
-external_accounts
+---
+
+## 16. External accounts
+
+Table: `external_accounts`
+
+```text
 external_accounts
 --------------------------------
-id                  UUID PK
-user_id             UUID FK
-provider            VARCHAR
-provider_user_id    VARCHAR NULL
-username            VARCHAR NULL
-profile_url         TEXT
-status              VARCHAR
-connected_at        TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id                 UUID PK
+user_id            UUID FK
+provider           VARCHAR
+provider_user_id   VARCHAR NULL
+username           VARCHAR NULL
+profile_url        TEXT
+status             VARCHAR
+connected_at       TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+```
 
-Examples:
+Examples of `provider`: GITHUB, LEETCODE, CODECHEF, CODEFORCES, KAGGLE
 
-GITHUB
-LEETCODE
-CODECHEF
-CODEFORCES
-KAGGLE
-Constraint
+Constraint: avoid connecting the same provider twice; typically enforce uniqueness on `(user_id, provider)` if one account per provider is allowed.
 
-A user's same provider account should not accidentally be connected twice.
+---
 
-Use an appropriate uniqueness constraint, typically around:
+## 17. GitHub repositories
 
-(user_id, provider)
+Table: `github_repositories`
 
-when one account per provider is allowed.
-
-17. GitHub repositories
-github_repositories
+```text
 github_repositories
 --------------------------------
-id                      UUID PK
-external_account_id     UUID FK
-github_repository_id    BIGINT
-name                    VARCHAR
-full_name               VARCHAR
-description             TEXT NULL
-html_url                TEXT
-default_branch          VARCHAR NULL
-stars_count             INTEGER
-forks_count             INTEGER
-language_summary        JSONB NULL
-readme_content          TEXT NULL
-last_pushed_at          TIMESTAMPTZ NULL
-github_created_at       TIMESTAMPTZ NULL
-github_updated_at       TIMESTAMPTZ NULL
-synced_at               TIMESTAMPTZ
-Important
+id                    UUID PK
+external_account_id   UUID FK
+github_repository_id  BIGINT
+name                  VARCHAR
+full_name             VARCHAR
+description           TEXT NULL
+html_url              TEXT
+default_branch         VARCHAR NULL
+stars_count           INTEGER
+forks_count           INTEGER
+language_summary      JSONB NULL
+readme_content        TEXT NULL
+last_pushed_at        TIMESTAMPTZ NULL
+github_created_at     TIMESTAMPTZ NULL
+github_updated_at     TIMESTAMPTZ NULL
+synced_at             TIMESTAMPTZ
+```
 
-github_repository_id should be unique for the relevant GitHub installation/account model.
+Important: `github_repository_id` should be unique (per GitHub installation/account). Do not rely on repository `name` as identity.
 
-Don't rely on repository name as identity.
+---
 
-Two repositories can have the same name under different users/organizations.
+## 18. Project ↔ GitHub Repository
 
-18. Project ↔ GitHub Repository
+Use a junction table rather than storing only a URL on `project`.
 
-A project may be linked to a GitHub repository.
+Table: `project_repositories`
 
-Do not store only:
-
-project.github_url
-
-for everything.
-
-We can support structured linkage:
-
-project_repositories
+```text
 project_repositories
 --------------------------------
-project_id              UUID FK
-github_repository_id    UUID FK
-is_primary              BOOLEAN
-created_at              TIMESTAMPTZ
+project_id            UUID FK
+github_repository_id  UUID FK
+is_primary            BOOLEAN
+created_at            TIMESTAMPTZ
 
 PK(project_id, github_repository_id)
+```
 
-This allows a project to use:
+A project can reference multiple repos (frontend, backend, mobile).
 
-Frontend repo
-Backend repo
-Mobile repo
+---
 
-if needed.
+## 19. Resume structure
 
-19. Resume structure
-resumes
+Table: `resumes`
+
+```text
 resumes
 --------------------------------
-id                  UUID PK
-profile_id          UUID FK
-name                VARCHAR
-target_role         VARCHAR NULL
-template_key        VARCHAR
-status              VARCHAR
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-deleted_at          TIMESTAMPTZ NULL
+id            UUID PK
+profile_id    UUID FK
+name          VARCHAR
+target_role   VARCHAR NULL
+template_key  VARCHAR
+status        VARCHAR
+created_at    TIMESTAMPTZ
+updated_at    TIMESTAMPTZ
+deleted_at    TIMESTAMPTZ NULL
+```
 
-Examples:
+Examples: "Java Backend Resume", "SDE Resume", "Internship Resume"
 
-Java Backend Resume
-SDE Resume
-Internship Resume
-20. Resume versions
-resume_versions
+---
+
+## 20. Resume versions
+
+Table: `resume_versions`
+
+```text
 resume_versions
 --------------------------------
-id                  UUID PK
-resume_id           UUID FK
-version_number      INTEGER
-content             JSONB
-created_at          TIMESTAMPTZ
-created_by          UUID FK
-
-Constraint:
+id              UUID PK
+resume_id       UUID FK
+version_number  INTEGER
+content         JSONB
+created_at      TIMESTAMPTZ
+created_by      UUID FK
 
 UNIQUE(resume_id, version_number)
+```
 
-This prevents:
+This prevents duplicate version numbers per resume.
 
-Resume 1
-Version 2
-Version 2
-21. Why JSONB for resume content?
+---
 
-The resume has variable structure:
+## 21. Why JSONB for resume content?
 
-Summary
-Education
-Projects
-Experience
-Achievements
-...
+- Resumes have variable structure (Summary, Education, Projects, Experience, Achievements, etc.).
+- Different templates require different layouts.
+- Keep canonical profile relationally modeled; store a renderable resume snapshot as JSONB (presentation model).
+- Important: Resume JSONB is a snapshot, not the authoritative source.
 
-Different templates may have different layout requirements.
+---
 
-Keeping the canonical profile relationally structured while storing a renderable resume snapshot as JSONB provides flexibility.
+## 22. Companies
 
-Important:
+Table: `companies`
 
-Resume JSONB is a snapshot/presentation model, not the authoritative source of candidate data.
-
-22. Companies
-companies
+```text
 companies
 --------------------------------
-id                  UUID PK
-name                VARCHAR
-legal_name          VARCHAR NULL
-description         TEXT NULL
-website_url         TEXT NULL
-industry             VARCHAR NULL
-location             VARCHAR NULL
-logo_url             TEXT NULL
-status               VARCHAR
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-23. Employer memberships
+id            UUID PK
+name          VARCHAR
+legal_name    VARCHAR NULL
+description   TEXT NULL
+website_url   TEXT NULL
+industry      VARCHAR NULL
+location      VARCHAR NULL
+logo_url      VARCHAR NULL
+status        VARCHAR
+created_at    TIMESTAMPTZ
+updated_at    TIMESTAMPTZ
+```
 
-Earlier we had:
+---
 
-Company 1 → N Employer
+## 23. Employer memberships
 
-but it's cleaner to represent the relationship explicitly.
+Table: `company_memberships`
 
-company_memberships
+```text
 company_memberships
 --------------------------------
-id                  UUID PK
-company_id          UUID FK
-user_id             UUID FK
-membership_role     VARCHAR
-status              VARCHAR
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id               UUID PK
+company_id       UUID FK
+user_id          UUID FK
+membership_role  VARCHAR
+status           VARCHAR
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
+```
 
-Possible membership roles:
-
-OWNER
-ADMIN
-RECRUITER
-HIRING_MANAGER
+Possible roles: `OWNER`, `ADMIN`, `RECRUITER`, `HIRING_MANAGER`
 
 Now:
+User → Company Membership → Company
 
-User
-   ↓
-Company Membership
-   ↓
-Company
+This supports granular authorization.
 
-This is much better for authorization.
+---
 
-24. Jobs
-jobs
+## 24. Jobs
+
+Table: `jobs`
+
+```text
 jobs
 --------------------------------
-id                  UUID PK
-company_id          UUID FK
-created_by_user_id  UUID FK
-title               VARCHAR
-description         TEXT
-employment_type     VARCHAR
-work_mode           VARCHAR
-location            VARCHAR NULL
-salary_min          NUMERIC NULL
-salary_max          NUMERIC NULL
-salary_currency     CHAR(3) NULL
-experience_min      NUMERIC NULL
-experience_max      NUMERIC NULL
-openings            INTEGER
+id                   UUID PK
+company_id           UUID FK
+created_by_user_id   UUID FK
+title                VARCHAR
+description          TEXT
+employment_type      VARCHAR
+work_mode            VARCHAR
+location             VARCHAR NULL
+salary_min           NUMERIC NULL
+salary_max           NUMERIC NULL
+salary_currency      CHAR(3) NULL
+experience_min       NUMERIC NULL
+experience_max       NUMERIC NULL
+openings             INTEGER
 application_deadline DATE NULL
-status              VARCHAR
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-published_at        TIMESTAMPTZ NULL
-closed_at           TIMESTAMPTZ NULL
-25. Job skills
-job_skills
+status               VARCHAR
+created_at           TIMESTAMPTZ
+updated_at           TIMESTAMPTZ
+published_at         TIMESTAMPTZ NULL
+closed_at            TIMESTAMPTZ NULL
+```
+
+---
+
+## 25. Job skills
+
+Table: `job_skills`
+
+```text
 job_skills
 --------------------------------
-job_id              UUID FK
-skill_id            UUID FK
-requirement_type    ENUM
-created_at          TIMESTAMPTZ
+job_id           UUID FK
+skill_id         UUID FK
+requirement_type ENUM
+created_at       TIMESTAMPTZ
 
 PK(job_id, skill_id)
+```
 
-requirement_type:
+`requirement_type`: `REQUIRED`, `PREFERRED`
 
-REQUIRED
-PREFERRED
-26. Job custom questions
+---
 
-This is missing from the earlier simplified database.
+## 26. Job custom questions
 
-job_questions
+Table: `job_questions`
+
+```text
 job_questions
 --------------------------------
-id                  UUID PK
-job_id              UUID FK
-question_text       TEXT
-question_type       VARCHAR
-is_required         BOOLEAN
-display_order       INTEGER
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id              UUID PK
+job_id          UUID FK
+question_text   TEXT
+question_type   VARCHAR
+is_required     BOOLEAN
+display_order   INTEGER
+created_at      TIMESTAMPTZ
+updated_at      TIMESTAMPTZ
+```
 
-Question types could include:
+Question types: `TEXT`, `LONG_TEXT`, `YES_NO`, `NUMBER`, `URL`, etc.
 
-TEXT
-LONG_TEXT
-YES_NO
-NUMBER
-URL
-27. Applications
-applications
+---
+
+## 27. Applications
+
+Table: `applications`
+
+```text
 applications
 --------------------------------
-id                  UUID PK
-job_id              UUID FK
-profile_id          UUID FK
-resume_id           UUID FK NULL
-resume_version_id   UUID FK NULL
-status              VARCHAR
-applied_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-withdrawn_at        TIMESTAMPTZ NULL
-Critical constraint
+id                 UUID PK
+job_id             UUID FK
+profile_id         UUID FK
+resume_id          UUID FK NULL
+resume_version_id  UUID FK NULL
+status             VARCHAR
+applied_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+withdrawn_at       TIMESTAMPTZ NULL
+```
 
-A candidate should not accidentally create unlimited duplicate applications for the same job unless the product explicitly allows reapplication.
+Critical constraint (MVP): `UNIQUE(job_id, profile_id)` to prevent accidental duplicates unless reapplication is explicitly allowed.
 
-For the MVP:
+---
 
-UNIQUE(job_id, profile_id)
+## 28. Why store both Resume and Resume Version?
 
-is a sensible starting rule.
+When a candidate applies using a particular resume version, we must know what was submitted even if they edit the resume later. Storing both `resume_id` and `resume_version_id` provides traceability.
 
-28. Why store both Resume and Resume Version?
+---
 
-Suppose:
+## 29. Application answers
 
-Student applies to Company A
+Table: `application_answers`
 
-using:
-
-Java Backend Resume
-Version 4
-
-Later they edit the resume.
-
-We still need to know what was submitted.
-
-Therefore storing:
-
-resume_id
-resume_version_id
-
-gives us historical traceability.
-
-29. Application answers
-application_answers
+```text
 application_answers
 --------------------------------
-id                  UUID PK
-application_id      UUID FK
-job_question_id     UUID FK
-answer_text         TEXT
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
-
-Constraint:
+id               UUID PK
+application_id   UUID FK
+job_question_id  UUID FK
+answer_text      TEXT
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
 
 UNIQUE(application_id, job_question_id)
-30. Application status history
+```
 
-This is extremely important for the ATS.
+---
 
-Don't only store:
+## 30. Application status history
 
-applications.status
+Table: `application_status_history`
 
-because then you lose the history.
-
-application_status_history
+```text
 application_status_history
 --------------------------------
-id                  UUID PK
-application_id      UUID FK
-from_status         VARCHAR NULL
-to_status           VARCHAR
-changed_by_user_id  UUID FK NULL
-note                TEXT NULL
-created_at          TIMESTAMPTZ
+id                 UUID PK
+application_id     UUID FK
+from_status        VARCHAR NULL
+to_status          VARCHAR
+changed_by_user_id UUID FK NULL
+note               TEXT NULL
+created_at         TIMESTAMPTZ
+```
 
-Now we can know:
+This preserves the ATS workflow and timestamps for every state change.
 
-APPLIED
-   ↓
-SCREENING
-   ↓
-SHORTLISTED
-   ↓
-INTERVIEW
-   ↓
-SELECTED
+---
 
-and exactly when each transition occurred.
-
-31. Application notes
+## 31. Application notes
 
 Recruiters may need private notes.
 
+Table: `application_notes`
+
+```text
 application_notes
-application_notes
 --------------------------------
-id                  UUID PK
-application_id      UUID FK
-created_by_user_id  UUID FK
-note                TEXT
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id                 UUID PK
+application_id     UUID FK
+created_by_user_id UUID FK
+note               TEXT
+created_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+```
 
-These notes must obey employer/company authorization.
+Notes must obey employer/company authorization rules.
 
-32. Interviews
+---
+
+## 32. Interviews
+
+Table: `interviews`
+
+```text
 interviews
-interviews
 --------------------------------
-id                  UUID PK
-application_id      UUID FK
-scheduled_at        TIMESTAMPTZ NULL
-interview_type      VARCHAR
-status              VARCHAR
-location_or_link    TEXT NULL
-notes               TEXT NULL
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id                 UUID PK
+application_id     UUID FK
+scheduled_at       TIMESTAMPTZ NULL
+interview_type     VARCHAR
+status             VARCHAR
+location_or_link   TEXT NULL
+notes              TEXT NULL
+created_at         TIMESTAMPTZ
+updated_at         TIMESTAMPTZ
+```
 
-Potential types:
+Potential types: `HR`, `TECHNICAL`, `PROJECT`, `MANAGERIAL`, `CODING`
 
-HR
-TECHNICAL
-PROJECT
-MANAGERIAL
-CODING
-33. Candidate availability/preferences
+---
 
-This wasn't clearly modeled earlier.
+## 33. Candidate availability / preferences
 
-A candidate may have preferences.
+Table: `candidate_preferences`
 
-candidate_preferences
+```text
 candidate_preferences
 --------------------------------
-id                  UUID PK
-profile_id          UUID UNIQUE FK
+id                 UUID PK
+profile_id         UUID UNIQUE FK
 preferred_work_mode VARCHAR NULL
 preferred_location  VARCHAR NULL
 remote_preference   BOOLEAN
@@ -800,433 +784,240 @@ job_search_status   VARCHAR NULL
 expected_salary     NUMERIC NULL
 notice_period_days  INTEGER NULL
 updated_at          TIMESTAMPTZ
+```
 
-This gives job matching additional structured information.
+This supports richer job matching.
 
-34. Important relationship map
+---
 
-The core model becomes:
+## 34. Important relationship map
 
+Core model:
+
+```
 Firebase
    │
    ▼
-users
+ users
    │
-   ├──────── user_roles
+   ├── user_roles
    │
-   └──────── profiles
-                │
-       ┌────────┼─────────┬──────────┐
-       ▼        ▼         ▼          ▼
-  education  experience projects   skills
-                         │           │
-                         └────┬──────┘
-                              ▼
-                           evidence
-                              ▲
-                              │
-                       GitHub repository
-                              ▲
-                              │
-                     external accounts
+   └── profiles
+         │
+    ┌────┼─────┬─────────┐
+    ▼    ▼     ▼         ▼
+  education experience projects skills
+                      │        │
+                      └───┬────┘
+                          ▼
+                       evidence
+                          ▲
+                          │
+                   GitHub repository
+                          ▲
+                          │
+                  external_accounts
+```
 
-And hiring:
+Hiring:
 
+```
 companies
    │
-   ├── company_memberships
-   │
-   └── jobs
-         │
-         ├── job_skills
-         ├── job_questions
-         │
-         └── applications
-                 │
-       ┌─────────┼───────────┐
-       ▼         ▼           ▼
- answers      status      interviews
-              history
-35. Final core table list
-
-For SkillBridge MVP, I recommend these tables:
-
-01  users
-02  roles
-03  user_roles
-04  profiles
-05  educations
-06  experiences
-07  projects
-08  skills
-09  profile_skills
-10  project_skills
-11  certifications
-12  achievements
-13  evidence
-14  external_accounts
-15  github_repositories
-16  project_repositories
-17  resumes
-18  resume_versions
-
-19  companies
-20  company_memberships
-21  jobs
-22  job_skills
-23  job_questions
-
-24  applications
-25  application_answers
-26  application_status_history
-27  application_notes
-28  interviews
-
-29  candidate_preferences
-
-This is much more complete than the earlier schema.
-
-36. Foreign-key rules
-
-We should establish these before coding.
-
-User deletion
-
-Don't casually cascade-delete everything when Firebase/user deletion occurs.
-
-For important historical records:
-
-ON DELETE RESTRICT
-
-or controlled soft deletion.
-
-Profile-owned data
-
-For things like:
-
-Profile → Education
-Profile → Experience
-Profile → Projects
-
-we can use controlled cascading where appropriate.
-
-Applications
-
-Avoid cascading deletion of:
-
-Job
- ↓
-Applications
-
-because applications are historical business records.
-
-Instead:
-
-Job → CLOSED
-
-rather than deleting the job.
-
-This is a major rule.
-
-37. Never delete important business history
-
-For example:
-
-Company
-   ↓
-Job
-   ↓
-Application
-
-Suppose the recruiter closes the job.
-
-Do not delete the Job row.
-
-Set:
-
-status = CLOSED
-
-Otherwise you destroy application history.
-
-Similarly, don't delete:
-
-application_status_history
-
-just because someone closes an account.
-
-38. Indexes
-
-Your backend developer should create indexes for frequent lookups.
-
-At minimum:
-
-users(firebase_uid)
-profiles(user_id)
-
-profile_skills(profile_id)
-profile_skills(skill_id)
-
-project_skills(project_id)
-project_skills(skill_id)
-
-external_accounts(user_id, provider)
-
-github_repositories(external_account_id)
-
-companies(name)
-
-company_memberships(company_id)
-company_memberships(user_id)
-
-jobs(company_id)
-jobs(status)
-
-job_skills(job_id)
-job_skills(skill_id)
-
-applications(job_id)
-applications(profile_id)
-applications(status)
-
-application_status_history(application_id)
-application_answers(application_id)
-
-interviews(application_id)
-
-Don't blindly index every column. Index according to actual query patterns and constraints.
-
-39. Data validation rules
-
-The database should protect itself as much as reasonably possible.
-
-Examples:
-
-experience.start_date <= experience.end_date
-job.experience_min <= job.experience_max
-job.salary_min <= job.salary_max
-job.openings > 0
-application status must be valid
-skill normalized_name must be unique
-resume version_number must be unique per resume
-
-Some validation belongs in Spring Boot, some belongs in PostgreSQL.
-
-Critical invariants should not depend only on frontend validation.
-
-40. Privacy / visibility
-
-Certain profile information should have visibility controls.
-
-At minimum:
-
-PUBLIC
-EMPLOYERS
-PRIVATE
-
-But don't automatically make everything employer-visible.
-
-Examples:
-
-GitHub repositories
-Projects
-Skills
-Resume
-Experience
-Contact information
-
-can each have their own business rules.
-
-Privacy should be enforced by the backend.
-
-41. The biggest architectural rule
-
-Your team should remember this:
-
-Firebase
-    = Identity
-
-PostgreSQL
-    = SkillBridge data
-
-Spring Boot
-    = Business rules + authorization
-
-Frontend
-    = User interface
-
-Never let the frontend decide:
-
-"This user is an admin, so I will give them admin data."
-
-The backend must decide that.
-
-42. AI data rule
-
-Don't store AI output as unquestioned truth.
-
-For example:
-
-AI says:
-Candidate demonstrates Spring Boot.
-
-That shouldn't automatically become:
-
-profile_skills → Spring Boot → VERIFIED
-
-Instead:
-
-AI analysis
-    ↓
-Evidence candidate
-    ↓
-Evidence rules
-    ↓
-Supported / Unverified / Verified
-
-AI is an input to the system—not the authority over the database.
-
-43. MVP vs Future tables
-
-Don't build everything immediately.
-
-MVP
-users
-roles
-user_roles
-profiles
-educations
-experiences
-projects
-skills
-profile_skills
-project_skills
-certifications
-achievements
-evidence
-external_accounts
-github_repositories
-project_repositories
-resumes
-resume_versions
-companies
 company_memberships
-jobs
-job_skills
-job_questions
-applications
-application_answers
-application_status_history
-application_notes
-interviews
-candidate_preferences
+   │
+  jobs
+  ├── job_skills
+  ├── job_questions
+  └── applications
+       ├── answers
+       ├── status history
+       └── interviews
+```
 
-This is already substantial.
+Resumes:
 
-Future
+```
+profiles
+  │
+ resumes
+  │
+ resume_versions
+```
 
-Later we can add:
+---
 
-colleges
-college_memberships
-hackathons
-events
-rankings
-assessments
-interview_sessions
-interview_answers
-project_recommendations
-notifications
-reports
-audit_logs
+## 35. Final core table list (MVP)
 
-We should not pollute the MVP schema with tables we won't use.
+1. users  
+2. roles  
+3. user_roles  
+4. profiles  
+5. educations  
+6. experiences  
+7. projects  
+8. skills  
+9. profile_skills  
+10. project_skills  
+11. certifications  
+12. achievements  
+13. evidence  
+14. external_accounts  
+15. github_repositories  
+16. project_repositories  
+17. resumes  
+18. resume_versions  
+19. companies  
+20. company_memberships  
+21. jobs  
+22. job_skills  
+23. job_questions  
+24. applications  
+25. application_answers  
+26. application_status_history  
+27. application_notes  
+28. interviews  
+29. candidate_preferences
 
-44. One more thing: schema versioning
+This is a substantial but practical MVP schema.
 
-Your team should never manually change the production database randomly.
+---
 
-Use a migration system.
+## 36. Foreign-key rules
 
-For Spring Boot, use something like:
+- Establish FK rules explicitly before coding.
+- User deletion: don't cascade-delete everything when Firebase/user deletion occurs. Use `ON DELETE RESTRICT` or controlled soft deletion for historical records.
+- Profile-owned data: use controlled cascading where appropriate for things like `Profile → Education/Experience/Projects`.
+- Applications: avoid cascading deletion of `Job → Applications`. Prefer `status = CLOSED` instead of deleting jobs.
 
-Flyway
+---
 
-Then:
+## 37. Never delete important business history
 
-V1__initial_schema.sql
-V2__add_github_tables.sql
-V3__add_application_history.sql
-V4__add_resume_versions.sql
+Historical records (jobs, applications, application_status_history, etc.) must be retained. Prefer status changes over deletion.
 
-Now the entire team knows exactly which database changes happened and in what order.
+---
 
-45. Development rule for the whole team
+## 38. Indexes
 
-Once we freeze this document:
+Create indexes for frequent lookups. Minimum recommended indexes:
 
-Nobody creates a new table simply because they need one for their feature.
+- `users(firebase_uid)`
+- `profiles(user_id)`
+- `profile_skills(profile_id)`, `profile_skills(skill_id)`
+- `project_skills(project_id)`, `project_skills(skill_id)`
+- `external_accounts(user_id, provider)`
+- `github_repositories(external_account_id)`
+- `companies(name)`
+- `company_memberships(company_id)`, `company_memberships(user_id)`
+- `jobs(company_id)`, `jobs(status)`
+- `job_skills(job_id)`, `job_skills(skill_id)`
+- `applications(job_id)`, `applications(profile_id)`, `applications(status)`
+- `application_status_history(application_id)`
+- `application_answers(application_id)`
+- `interviews(application_id)`
 
-They first check:
+Don't index everything — base indexes on query patterns.
 
-Does the entity already exist?
-       ↓
-Can an existing relationship solve it?
-       ↓
-If not → discuss schema change
-       ↓
-Update database-design document
-       ↓
-Create migration
-       ↓
-Implement
+---
 
-This single rule will prevent a lot of database chaos.
+## 39. Data validation rules
 
-Final SkillBridge database architecture
-                         FIREBASE
-                            │
-                            ▼
-                          users
-                            │
-                    ┌───────┴────────┐
-                    ▼                ▼
-                user_roles        profiles
-                                      │
-          ┌────────────┬──────────────┼─────────────┐
-          ▼            ▼              ▼             ▼
-      education    experience      projects       skills
-                                      │              │
-                                      ├──────────────┤
-                                      ▼
-                                  evidence
-                                      ▲
-                                      │
-                              GitHub / Certificates
-                                      │
-                               external_accounts
+Enforce critical invariants in DB (and also validate in application code):
 
+- `experience.start_date <= experience.end_date`
+- `job.experience_min <= job.experience_max`
+- `job.salary_min <= job.salary_max`
+- `job.openings > 0`
+- `application.status` must be valid
+- `skill.normalized_name` must be unique
+- `resume.version_number` unique per resume
 
-                         companies
-                            │
-                     company_memberships
-                            │
-                            ▼
-                           jobs
-                     ┌──────┼──────┐
-                     ▼      ▼      ▼
-                job_skills questions
-                            │
-                            ▼
-                      applications
-                     ┌──────┼─────────┐
-                     ▼      ▼         ▼
-                  answers history  interviews
+Put critical invariants in the database (constraints/triggers) rather than relying only on frontend validation.
 
+---
 
-                         profiles
-                            │
-                            ▼
-                         resumes
-                            │
-                            ▼
-                    resume_versions
+## 40. Privacy / visibility
+
+Profile fields should have visibility controls (at minimum: `PUBLIC`, `EMPLOYERS`, `PRIVATE`) and backend enforcement. Example items to control:
+
+- GitHub repositories
+- Projects
+- Skills
+- Resumes
+- Experience
+- Contact information
+
+---
+
+## 41. The biggest architectural rule
+
+- Firebase = Identity  
+- PostgreSQL = SkillBridge data  
+- Spring Boot = Business rules + authorization  
+- Frontend = User interface
+
+Never rely on frontend to grant sensitive access (e.g., "this user is admin, so show admin data"). The backend must decide authorization.
+
+---
+
+## 42. AI data rule
+
+Do not treat AI output as authoritative. AI analysis can create evidence candidates, but verification must follow evidence rules. Example flow:
+
+AI analysis → Evidence candidate → Evidence rules → (Supported / Unverified / Verified)
+
+AI alone should not mark data as `VERIFIED`.
+
+---
+
+## 43. MVP vs Future tables
+
+MVP (do first): the full list from Section 35.
+
+Future (add later):
+- colleges, college_memberships
+- hackathons
+- events
+- rankings
+- assessments
+- interview_sessions, interview_answers
+- project_recommendations
+- notifications
+- reports
+- audit_logs
+
+Do not add tables prematurely to the MVP schema.
+
+---
+
+## 44. Schema versioning
+
+Use a migration system (e.g., Flyway for Spring Boot):
+
+- V1__initial_schema.sql
+- V2__add_github_tables.sql
+- V3__add_application_history.sql
+- V4__add_resume_versions.sql
+
+This ensures ordered, auditable DB changes.
+
+---
+
+## 45. Development rule for the whole team
+
+Before creating a new table:
+
+1. Check if the entity already exists.
+2. Can an existing relationship solve the need?
+3. If not, discuss the schema change (update the design doc).
+4. Create a migration.
+5. Implement code changes.
+
+This prevents schema sprawl and inconsistent models.
+
+---
+
+### Final note
+
+This formatted document preserves the original content and intent but makes it easier to read, reference, and convert to migration scripts or an ER diagram. Use this as the canonical design doc to drive migrations and application code.
