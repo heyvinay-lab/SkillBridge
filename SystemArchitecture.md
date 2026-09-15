@@ -1,189 +1,212 @@
-SkillBridge System Architecture
+# SkillBridge — System Architecture
 
-Now we move from “what SkillBridge should do” to:
+This document moves from “what SkillBridge should do” to:
 
-“How are we going to build it?”
+"How are we going to build it?"
 
-This document is extremely important because your team needs one agreed technical structure before everyone starts coding.
+This file defines the agreed technical structure so the team can start implementing with a common vision.
 
-1. High-Level Architecture
+---
 
-For SkillBridge, I recommend:
+## Table of contents
 
-                    USER
-                     │
-                     ▼
-              ┌─────────────┐
-              │  Frontend   │
-              │ React/Next  │
-              └──────┬──────┘
-                     │
-                  HTTPS/API
-                     │
-                     ▼
-              ┌─────────────┐
-              │ Spring Boot │
-              │   Backend   │
-              └──────┬──────┘
-                     │
-       ┌─────────────┼──────────────┐
-       │             │              │
-       ▼             ▼              ▼
-  PostgreSQL       AI Layer     External APIs
-       │             │              │
-       │             │              ├── GitHub
-       │             │              └── Future APIs
-       │             │
-       ▼             ▼
-    pgvector       Ollama /
-                   AI Provider
+1. [High-Level Architecture](#high-level-architecture)
+2. [Frontend](#frontend)
+3. [Backend](#backend)
+4. [Database](#database)
+5. [Authentication](#authentication)
+6. [GitHub Integration](#github-integration)
+7. [Evidence Engine Architecture](#evidence-engine-architecture)
+8. [AI Layer](#ai-layer)
+9. [AI Architecture](#ai-architecture)
+10. [Job Matching Architecture](#job-matching-architecture)
+11. [Resume Architecture](#resume-architecture)
+12. [Employer Architecture](#employer-architecture)
+13. [Complete Architecture](#complete-architecture)
+14. [Recommended Technology Stack](#recommended-technology-stack)
+15. [Very Important: Separate the layers](#very-important-separate-the-layers)
 
-This is the basic architecture.
+---
 
-2. Frontend
-Technology
-Next.js / React
-Tailwind CSS
+## 1. High-Level Architecture
 
-The frontend is what the user sees.
+Recommended high-level components and flow:
 
-For example:
+```
+                  USER
+                   │
+                   ▼
+            ┌─────────────┐
+            │  Frontend   │
+            │ React/Next  │
+            └──────┬──────┘
+                   │
+                HTTPS/API
+                   │
+                   ▼
+            ┌─────────────┐
+            │ Spring Boot │
+            │   Backend   │
+            └──────┬──────┘
+                   │
+     ┌─────────────┼──────────────┐
+     │             │              │
+     ▼             ▼              ▼
+PostgreSQL       AI Layer     External APIs
+     │             │              │
+     │             │              ├── GitHub
+     │             │              └── Future APIs
+     │             │
+     ▼             ▼
+  pgvector       Ollama / AI Provider
+```
 
-Student Dashboard
-        │
-        ├── Profile
-        ├── Projects
-        ├── Skills
-        ├── GitHub
-        ├── Evidence
-        ├── Resumes
-        ├── Jobs
-        └── Applications
+This is the basic architecture: frontend → backend → persistence/AI/external APIs.
 
-The frontend should not directly access the database.
+---
 
-Instead:
+## 2. Frontend
+
+**Technology**
+- Next.js / React
+- Tailwind CSS
+
+The frontend is the user-facing surface. It should not access the database directly — all access goes through the backend API.
+
+Example surface (Student Dashboard):
+- Profile
+- Projects
+- Skills
+- GitHub
+- Evidence
+- Resumes
+- Jobs
+- Applications
+
+Flow:
 
 Frontend
-    ↓
+  ↓
 Backend API
-    ↓
+  ↓
 Database
-3. Backend
-Technology
-Java
-Spring Boot
 
-The backend is the main business layer.
+---
 
-For example:
+## 3. Backend
 
-Frontend
-    │
-    │ POST /api/projects
-    ▼
-Spring Boot
-    │
-    ├── Firebase Authentication
-    ├── Validation
-    ├── Business Logic
-    ├── Evidence
-    ├── Resume
-    ├── Matching
-    └── Applications
-    │
-    ▼
-PostgreSQL
+**Technology**
+- Java
+- Spring Boot
 
-The backend should decide what is allowed to happen.
+The backend is the main business layer and enforces authorization, validation, and business rules.
 
-4. Database
-
-Use:
-
-PostgreSQL
-
-Potentially with:
-
-pgvector
-
-for semantic/vector search later.
-
-Core entities:
-
-User
-Profile
-Education
-Experience
-Skill
-Project
-Evidence
-Resume
-ResumeVersion
-Company
-Employer
-Job
-JobSkill
-Application
-Interview
-ExternalAccount
-
-Relationships will be designed separately in the database document.
-
-5. Authentication
-
-Don't build password authentication from scratch unless there is a strong reason.
-
-For the MVP:
+Example request flow:
 
 Frontend
-    ↓
+  │
+  │ POST /api/projects
+  ▼
+Spring Boot
+  ├── Firebase Authentication
+  ├── Validation
+  ├── Business Logic
+  ├── Evidence
+  ├── Resume
+  ├── Matching
+  └── Applications
+  ▼
+PostgreSQL
+
+The backend decides what is allowed and performs server-side checks before changing state.
+
+---
+
+## 4. Database
+
+**Primary choice**: PostgreSQL
+
+Optionally use pgvector for semantic/vector search later.
+
+Core entities (high level):
+- User
+- Profile
+- Education
+- Experience
+- Skill
+- Project
+- Evidence
+- Resume
+- ResumeVersion
+- Company
+- Employer
+- Job
+- JobSkill
+- Application
+- Interview
+- ExternalAccount
+
+Detailed relationships will be designed in a separate database document.
+
+---
+
+## 5. Authentication
+
+Do not build password authentication from scratch for the MVP unless there's a very strong reason.
+
+Suggested flow for MVP:
+
+Frontend
+  ↓
 Firebase Auth
-    ↓
+  ↓
 Authenticated User
-    ↓
+  ↓
 Spring Boot
-    ↓
+  ↓
 PostgreSQL
 
-The backend should still verify the authenticated user's identity before allowing protected operations.
+The backend must still verify the authenticated user's identity and permissions before allowing protected operations.
 
-6. GitHub Integration
+---
 
-GitHub should communicate through the backend.
+## 6. GitHub Integration
 
-Don't do this:
+GitHub integration must go through the backend. Do not call the GitHub API directly from the browser.
 
-Browser
-   ↓
-GitHub API
-
-Prefer:
+Incorrect:
 
 Browser
-   ↓
-Spring Boot
-   ↓
+ ↓
 GitHub API
-   ↓
+
+Preferred:
+
+Browser
+ ↓
 Spring Boot
-   ↓
+ ↓
+GitHub API
+ ↓
+Spring Boot
+ ↓
 Database
 
-Why?
+Why use the backend as a mediator?
+- OAuth / token handling
+- Permissions
+- Data normalization
+- Rate limit handling
+- Synchronization and retries
+- Error handling
 
-Because you need to control:
+---
 
-OAuth/token handling
-permissions
-data normalization
-rate limits
-synchronization
-error handling
-7. Evidence Engine Architecture
+## 7. Evidence Engine Architecture
 
-This is where SkillBridge becomes interesting.
+This component extracts and evaluates evidence from multiple sources about a candidate.
 
+```
              Candidate Profile
                     │
                     ▼
@@ -202,190 +225,101 @@ This is where SkillBridge becomes interesting.
                     │
                     ▼
              Evidence Status
+```
 
-AI can help interpret unstructured information.
+AI can help interpret unstructured information, but AI should not be the sole decision-maker. Mix deterministic rules + AI interpretation + user confirmation.
 
-But AI shouldn't independently decide everything.
+Example flow (GitHub repo → evidence):
+- Detect Java files
+- Detect Spring Boot dependency
+- Mark as relevant project
+- Generate evidence candidate
+- Student reviews
+- Student accepts
 
-For example:
+---
 
-GitHub repository
-       ↓
-Java files detected
-       ↓
-Spring Boot dependency detected
-       ↓
-Relevant project
-       ↓
-Evidence generated
-       ↓
-Student reviews
-       ↓
-Accepted
+## 8. AI Layer
 
-This gives you a combination of:
+AI should be used for augmenting capabilities, not as the core control plane. Examples:
+- Parse job descriptions → extract skills/requirements
+- Analyze resumes → claim analysis
+- Candidate + Job → semantic matching and explanation
 
-Deterministic evidence + AI interpretation + user confirmation
+Traditional code should continue to manage authentication, permissions, storage, and workflow state.
 
-which is much safer than simply asking an LLM:
+---
 
-"Is this person good at Java?"
+## 9. AI Architecture
 
-8. AI Layer
+Abstract an AI service interface so implementations can change without touching business logic.
 
-Don't make the entire application dependent on AI.
+Example interface (Java-like):
 
-Use AI for tasks such as:
-
-Job Description
-      ↓
-AI
-      ↓
-Skills / Requirements
-
-and:
-
-Resume
-  ↓
-AI
-  ↓
-Claim analysis
-
-and:
-
-Candidate + Job
-       ↓
-Semantic analysis
-       ↓
-Match explanation
-
-But traditional code handles:
-
-Authentication
-Permissions
-Database
-Applications
-Resume versions
-Job status
-ATS stages
-9. AI Architecture
-
-For development, you can use:
-
-SkillBridge
-     │
-     ▼
-AI Service Interface
-     │
-     ├── Ollama
-     │
-     └── External AI provider
-
-This is important.
-
-Don't write your entire application directly around one AI provider.
-
-Instead:
-
+```java
 interface AIService {
     AnalysisResult analyzeJob(String jobDescription);
 }
 
-Then your implementation can change later.
+class OllamaAIService implements AIService { ... }
+class OpenRouterAIService implements AIService { ... }
+```
 
-AIService
-   │
-   ├── OllamaAIService
-   └── OpenRouterAIService
+This allows switching providers or adding fallbacks without redesigning the application.
 
-That gives you flexibility.
+---
 
-10. Job Matching Architecture
+## 10. Job Matching Architecture
 
-A simplified version:
+Simplified model:
 
 Candidate
-    │
-    ├── Skills
-    ├── Experience
-    ├── Projects
-    ├── Education
-    └── Evidence
-             │
-             ▼
-       Matching Engine
-             ▲
-             │
-           Job
-             │
-             ├── Required Skills
-             ├── Preferred Skills
-             ├── Experience
-             └── Education
+  ├─ Skills
+  ├─ Experience
+  ├─ Projects
+  ├─ Education
+  └─ Evidence
+      ↓
+Matching Engine ← Job (required/preferred skills, experience, education)
 
-The result should contain:
+Result should include:
+- Strengths
+- Gaps
+- Evidence
+- Explanation
 
-Match
-├── Strengths
-├── Gaps
-├── Evidence
-└── Explanation
+A numerical score can be added later.
 
-Later you can add a numerical score.
+---
 
-11. Resume Architecture
+## 11. Resume Architecture
 
-The resume should not be the primary source of candidate information.
+The resume is a presentation layer derived from a Master Profile.
 
-Instead:
+Master Profile
+  ├─ Resume A
+  ├─ Resume B
+  └─ Resume C
 
-                Master Profile
-                     │
-        ┌────────────┼────────────┐
-        ▼            ▼            ▼
-     Resume A     Resume B     Resume C
-      Backend      SDE        Internship
+When the Master Profile changes (e.g., Experience updated), resumes can be rebuilt from the canonical data.
 
-This is a critical design decision.
+---
 
-If the student updates:
+## 12. Employer Architecture
 
-Experience
+Employer side model:
 
-the Master Profile changes.
+Employer → Company → Job → Applications → Candidates → ATS Pipeline
 
-Then they can update/rebuild relevant resumes from the new data.
+The meeting point between candidate and employer is the Job + Application.
 
-12. Employer Architecture
+---
 
-Employer side:
+## 13. Complete Architecture
 
-Employer
-   │
-   ▼
-Company
-   │
-   ▼
-Job
-   │
-   ▼
-Applications
-   │
-   ▼
-Candidates
-   │
-   ▼
-ATS Pipeline
+High-level end-to-end view:
 
-The candidate and employer systems meet at:
-
-Job
-  +
-Application
-13. Complete Architecture
-
-Put everything together:
-
+```
                          SKILLBRIDGE
                               │
                  ┌────────────┴────────────┐
@@ -421,35 +355,42 @@ Put everything together:
                             │
                             ▼
                          Hired
-14. Recommended Technology Stack
-Layer	Technology
-Frontend	Next.js / React
-UI	Tailwind CSS
-Backend	Java + Spring Boot
-Database	PostgreSQL
-Vector Search	pgvector
-Authentication	Supabase Auth
-File Storage	Supabase Storage
-AI	Ollama + optional provider fallback
-External Integration	GitHub API
-API Testing	Postman/Bruno
-Version Control	Git + GitHub
-Containerization	Docker
-Frontend Hosting	Vercel
-Backend Hosting	Render/free-tier alternative
-Database	Supabase
-15. Very Important: Separate the layers
+```
 
-Your backend shouldn't become one giant file.
+---
 
-Use something like:
+## 14. Recommended Technology Stack
 
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js / React |
+| UI | Tailwind CSS |
+| Backend | Java + Spring Boot |
+| Database | PostgreSQL |
+| Vector Search | pgvector |
+| Authentication | Supabase Auth (or Firebase Auth for MVP) |
+| File Storage | Supabase Storage |
+| AI | Ollama (+ optional provider fallback) |
+| External Integration | GitHub API |
+| API Testing | Postman / Bruno |
+| Version Control | Git + GitHub |
+| Containerization | Docker |
+| Frontend Hosting | Vercel |
+| Backend Hosting | Render (or a free-tier alternative) |
+| Database Hosting | Supabase |
+
+---
+
+## 15. Very Important: Separate the layers
+
+Keep the backend modular — avoid a single giant file. Suggested package layout (Java):
+
+```
 backend/
 └── src/
     └── main/
         └── java/
             └── com/skillbridge/
-                │
                 ├── auth/
                 ├── profile/
                 ├── project/
@@ -461,14 +402,17 @@ backend/
                 ├── application/
                 ├── employer/
                 └── common/
+```
 
-Inside a module:
+Inside a module (example - resume):
 
-resume/
-├── ResumeController
-├── ResumeService
-├── ResumeRepository
-├── ResumeEntity
-└── ResumeDTO
+- ResumeController
+- ResumeService
+- ResumeRepository
+- ResumeEntity
+- ResumeDTO
 
 You'll learn what these mean when we start backend development.
+
+---
+
